@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usuarios - Bot Compañero</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 24px;
+        }
+
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 5px;
+            text-decoration: none;
+            transition: background 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .stats {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .users-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .user-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .user-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        }
+
+        .user-card h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .user-info {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .user-info strong {
+            color: #333;
+        }
+
+        .view-btn {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .view-btn:hover {
+            background: #5568d3;
+        }
+
+        .no-users {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            text-align: center;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1>🤝 Bot Compañero - Panel de Administración</h1>
+            <a href="/logout" class="logout-btn">Cerrar sesión</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="stats">
+            <h2>📊 Estadísticas</h2>
+            <p>Total de usuarios: <strong>{{ users|length }}</strong></p>
+        </div>
+
+        {% if users %}
+        <div class="users-grid">
+            {% for user in users %}
+            <div class="user-card">
+                <h3>{{ user.first_name or 'Usuario' }}</h3>
+                <div class="user-info">
+                    <strong>ID:</strong> {{ user.user_id }}
+                </div>
+                {% if user.username %}
+                <div class="user-info">
+                    <strong>Username:</strong> @{{ user.username }}
+                </div>
+                {% endif %}
+                <div class="user-info">
+                    <strong>Mensajes:</strong> {{ user.message_count }}
+                </div>
+                <div class="user-info">
+                    <strong>Última actividad:</strong> {{ user.last_message.split('T')[0] if user.last_message else 'N/A' }}
+                </div>
+                <a href="/user/{{ user.user_id }}" class="view-btn">Ver conversación</a>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="no-users">
+            <h2>No hay usuarios registrados aún</h2>
+            <p>Las conversaciones aparecerán aquí cuando los usuarios empiecen a usar el bot.</p>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

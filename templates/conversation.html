@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversación - {{ user_data.first_name or 'Usuario' }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-content {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 24px;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 5px;
+            text-decoration: none;
+            transition: background 0.3s;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .user-info {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .user-info h2 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .info-item {
+            color: #666;
+            margin: 5px 0;
+        }
+
+        .filters {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .filters h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .filter-form {
+            display: flex;
+            gap: 10px;
+            align-items: end;
+        }
+
+        .form-group {
+            flex: 1;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .filter-btn {
+            padding: 8px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .filter-btn:hover {
+            background: #5568d3;
+        }
+
+        .clear-btn {
+            padding: 8px 20px;
+            background: #999;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: background 0.3s;
+        }
+
+        .clear-btn:hover {
+            background: #777;
+        }
+
+        .conversation {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .message {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .message.user {
+            background: #e3f2fd;
+            margin-left: 20px;
+        }
+
+        .message.assistant {
+            background: #f3e5f5;
+            margin-right: 20px;
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .message-role {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .message-content {
+            color: #333;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        .no-messages {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1>💬 Conversación</h1>
+            <a href="/" class="back-btn">← Volver</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="user-info">
+            <h2>{{ user_data.first_name or 'Usuario' }}</h2>
+            <div class="info-item"><strong>ID:</strong> {{ user_data.user_id }}</div>
+            {% if user_data.username %}
+            <div class="info-item"><strong>Username:</strong> @{{ user_data.username }}</div>
+            {% endif %}
+            <div class="info-item"><strong>Total de mensajes:</strong> {{ user_data.messages|length }}</div>
+            <div class="info-item"><strong>Primera conversación:</strong> {{ user_data.created_at.split('T')[0] }}</div>
+        </div>
+
+        <div class="filters">
+            <h3>🔍 Filtrar por fecha</h3>
+            <form method="GET" class="filter-form">
+                <div class="form-group">
+                    <label for="start_date">Fecha inicio:</label>
+                    <input type="date" id="start_date" name="start_date" value="{{ start_date }}">
+                </div>
+                <div class="form-group">
+                    <label for="end_date">Fecha fin:</label>
+                    <input type="date" id="end_date" name="end_date" value="{{ end_date }}">
+                </div>
+                <button type="submit" class="filter-btn">Filtrar</button>
+                <a href="/user/{{ user_data.user_id }}" class="clear-btn">Limpiar</a>
+            </form>
+        </div>
+
+        <div class="conversation">
+            {% if messages %}
+                {% for message in messages %}
+                <div class="message {{ message.role }}">
+                    <div class="message-header">
+                        <span class="message-role">
+                            {% if message.role == 'user' %}
+                                👤 Usuario
+                            {% else %}
+                                🤖 Asistente
+                            {% endif %}
+                        </span>
+                        <span class="message-time">{{ message.timestamp.split('T')[0] }} {{ message.timestamp.split('T')[1].split('.')[0] }}</span>
+                    </div>
+                    <div class="message-content">{{ message.content }}</div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-messages">
+                    <h3>No hay mensajes en este rango de fechas</h3>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
