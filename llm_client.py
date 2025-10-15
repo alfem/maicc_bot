@@ -1,12 +1,14 @@
 """
-Cliente para interactuar con la API de Google Gemini.
+Cliente para interactuar con la API de Google Gemini usando REST API.
+Compatible con Python 3.7+
 """
-import google.generativeai as genai
+import requests
+import json
 from typing import List, Dict, Optional
 
 
 class LLMClient:
-    """Cliente para hacer llamadas a la API de LLM."""
+    """Cliente para hacer llamadas a la API de LLM usando REST."""
 
     def __init__(self, api_key: str, model: str, max_tokens: int = 1024,
                  temperature: float = 0.7, system_prompt: str = "",
@@ -20,25 +22,19 @@ class LLMClient:
             max_tokens: Número máximo de tokens en la respuesta
             temperature: Temperatura para la generación
             system_prompt: Prompt del sistema que define el comportamiento del asistente
-            api_url: No usado para Gemini (mantenido por compatibilidad)
+            api_url: URL base de la API (si está vacío, usa la URL por defecto de Gemini)
         """
-        # Configurar API key
-        genai.configure(api_key=api_key)
-
-        # Configurar generación
-        self.generation_config = {
-            "temperature": temperature,
-            "max_output_tokens": max_tokens,
-        }
-
-        # Crear modelo con system instruction
-        self.model = genai.GenerativeModel(
-            model_name=model,
-            generation_config=self.generation_config,
-            system_instruction=system_prompt if system_prompt else None
-        )
-
+        self.api_key = api_key
+        self.model = model
+        self.max_tokens = max_tokens
+        self.temperature = temperature
         self.system_prompt = system_prompt
+
+        # URL base de la API de Gemini
+        if api_url:
+            self.base_url = api_url
+        else:
+            self.base_url = "https://generativelanguage.googleapis.com/v1beta"
 
     def get_response(self, messages: List[Dict[str, str]]) -> str:
         """
@@ -51,28 +47,75 @@ class LLMClient:
             Respuesta generada por el LLM
         """
         try:
-            # Convertir formato de mensajes a formato Gemini
-            # Gemini usa 'user' y 'model' en lugar de 'user' y 'assistant'
-            history = []
-            for msg in messages[:-1]:  # Todos menos el último
-                role = "user" if msg["role"] == "user" else "model"
-                history.append({
-                    "role": role,
-                    "parts": [msg["content"]]
+            # Construir el contenido para la API de Gemini
+            contents = []
+
+            # Si hay system prompt, agregarlo como primer mensaje del usuario
+            if self.system_prompt and (not messages or messages[0].get("role") != "system"):
+                contents.append({
+                    "role": "user",
+                    "parts": [{"text": self.system_prompt}]
+                })
+                contents.append({
+                    "role": "model",
+                    "parts": [{"text": "Entendido. Actuaré según estas instrucciones."}]
                 })
 
-            # Crear chat con historial
-            chat = self.model.start_chat(history=history)
+            # Convertir mensajes al formato de Gemini
+            # Gemini usa 'user' y 'model' en lugar de 'user' y 'assistant'
+            for msg in messages:
+                if msg["role"] == "system":
+                    # Ignorar mensajes de sistema adicionales, ya se manejó arriba
+                    continue
 
-            # Enviar el último mensaje
-            last_message = messages[-1]["content"] if messages else ""
-            response = chat.send_message(last_message)
+                role = "user" if msg["role"] == "user" else "model"
+                contents.append({
+                    "role": role,
+                    "parts": [{"text": msg["content"]}]
+                })
 
-            return response.text
+            # Preparar la solicitud
+            url = f"{self.base_url}/models/{self.model}:generateContent?key={self.api_key}"
 
-        except Exception as e:
+            payload = {
+                "contents": contents,
+                "generationConfig": {
+                    "temperature": self.temperature,
+                    "maxOutputTokens": self.max_tokens,
+                }
+            }
+
+            # Si hay system prompt, agregarlo a systemInstruction
+            if self.system_prompt:
+                payload["systemInstruction"] = {
+                    "parts": [{"text": self.system_prompt}]
+                }
+
+            # Hacer la solicitud
+            headers = {"Content-Type": "application/json"}
+            response = requests.post(url, headers=headers, json=payload, timeout=30)
+            response.raise_for_status()
+
+            # Extraer la respuesta
+            result = response.json()
+
+            if "candidates" in result and len(result["candidates"]) > 0:
+                candidate = result["candidates"][0]
+                if "content" in candidate and "parts" in candidate["content"]:
+                    text_parts = [part.get("text", "") for part in candidate["content"]["parts"]]
+                    return "".join(text_parts)
+
+            return "Lo siento, no pude generar una respuesta. ¿Podrías intentarlo de nuevo?"
+
+        except requests.exceptions.Timeout:
+            print("Error: Timeout en la solicitud a la API")
+            return "Disculpa, la solicitud tardó demasiado. ¿Podrías intentarlo de nuevo?"
+        except requests.exceptions.RequestException as e:
             print(f"Error de API: {e}")
             return "Disculpa, hubo un problema al comunicarme con el servicio. ¿Podrías intentarlo de nuevo?"
+        except Exception as e:
+            print(f"Error inesperado: {e}")
+            return "Disculpa, ocurrió un error inesperado. ¿Podrías intentarlo de nuevo?"
 
     def chat(self, user_message: str, context: List[Dict[str, str]] = None) -> str:
         """
