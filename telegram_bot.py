@@ -5,7 +5,7 @@ import json
 import logging
 from datetime import datetime, timedelta
 from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 
 from conversation_manager import ConversationManager
 from llm_client import LLMClient
@@ -49,9 +49,11 @@ class CompanionBot:
         )
 
         # Crear aplicación de Telegram
-        self.app = Application.builder().token(
-            self.config["telegram"]["bot_token"]
-        ).build()
+        self.updater = Updater(
+            token=self.config["telegram"]["bot_token"],
+            use_context=True
+        )
+        self.dispatcher = self.updater.dispatcher
 
         # Diccionario para rastrear la última actividad de cada usuario
         self.user_last_activity = {}
@@ -61,15 +63,15 @@ class CompanionBot:
 
     def _register_handlers(self):
         """Registra los manejadores de comandos y mensajes."""
-        self.app.add_handler(CommandHandler("start", self.start_command))
-        self.app.add_handler(CommandHandler("help", self.help_command))
-        self.app.add_handler(CommandHandler("reset", self.reset_command))
-        self.app.add_handler(MessageHandler(
-            filters.TEXT & ~filters.COMMAND,
+        self.dispatcher.add_handler(CommandHandler("start", self.start_command))
+        self.dispatcher.add_handler(CommandHandler("help", self.help_command))
+        self.dispatcher.add_handler(CommandHandler("reset", self.reset_command))
+        self.dispatcher.add_handler(MessageHandler(
+            Filters.text & ~Filters.command,
             self.handle_message
         ))
 
-    async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    def start_command(self, update: Update, context: CallbackContext):
         """Maneja el comando /start."""
         user = update.effective_user
         welcome_message = (
@@ -83,14 +85,14 @@ class CompanionBot:
             "/reset - Empezar una nueva conversación"
         )
 
-        await update.message.reply_text(welcome_message)
+        update.message.reply_text(welcome_message)
 
         # Actualizar última actividad
         self.user_last_activity[user.id] = datetime.now()
 
         logger.info(f"Usuario {user.id} ({user.username}) inició el bot")
 
-    async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    def help_command(self, update: Update, context: CallbackContext):
         """Maneja el comando /help."""
         help_message = (
             "🤝 *Cómo usar el bot*\n\n"
@@ -104,9 +106,9 @@ class CompanionBot:
             "Estoy aquí para acompañarte y conversar. ¡No dudes en escribirme!"
         )
 
-        await update.message.reply_text(help_message, parse_mode='Markdown')
+        update.message.reply_text(help_message, parse_mode='Markdown')
 
-    async def reset_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    def reset_command(self, update: Update, context: CallbackContext):
         """Maneja el comando /reset para borrar el historial."""
         user_id = update.effective_user.id
 
@@ -117,10 +119,10 @@ class CompanionBot:
             "Podemos empezar de nuevo. ¿De qué te gustaría hablar?"
         )
 
-        await update.message.reply_text(reset_message)
+        update.message.reply_text(reset_message)
         logger.info(f"Usuario {user_id} reinició su conversación")
 
-    async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    def handle_message(self, update: Update, context: CallbackContext):
         """Maneja los mensajes de texto del usuario."""
         user = update.effective_user
         user_message = update.message.text
@@ -143,7 +145,7 @@ class CompanionBot:
         context_messages = self.conversation_manager.get_context(user.id)
 
         # Enviar "escribiendo..." mientras se genera la respuesta
-        await update.message.chat.send_action(action="typing")
+        context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
 
         # Obtener respuesta del LLM
         assistant_response = self.llm_client.get_response(context_messages)
@@ -156,11 +158,11 @@ class CompanionBot:
         )
 
         # Enviar respuesta al usuario
-        await update.message.reply_text(assistant_response)
+        update.message.reply_text(assistant_response)
 
         logger.info(f"Respuesta enviada a {user.id}")
 
-    async def send_proactive_message(self, context: ContextTypes.DEFAULT_TYPE):
+    def send_proactive_message(self, context: CallbackContext):
         """
         Envía mensajes proactivos a usuarios que llevan tiempo sin escribir.
         """
@@ -205,7 +207,7 @@ class CompanionBot:
                     }
 
                     # Enviar acción de escritura
-                    await context.bot.send_chat_action(chat_id=user_id, action="typing")
+                    context.bot.send_chat_action(chat_id=user_id, action="typing")
 
                     # Generar mensaje proactivo
                     proactive_messages = context_messages + [proactive_prompt]
@@ -219,7 +221,7 @@ class CompanionBot:
                     )
 
                     # Enviar mensaje al usuario
-                    await context.bot.send_message(chat_id=user_id, text=assistant_response)
+                    context.bot.send_message(chat_id=user_id, text=assistant_response)
 
                     # Actualizar última actividad (para no enviar otro mensaje inmediatamente)
                     self.user_last_activity[user_id] = datetime.now()
@@ -240,7 +242,7 @@ class CompanionBot:
         check_interval = self.config.get("proactive", {}).get("check_interval_minutes", 15)
 
         if proactive_enabled:
-            job_queue = self.app.job_queue
+            job_queue = self.updater.job_queue
             job_queue.run_repeating(
                 self.send_proactive_message,
                 interval=check_interval * 60,  # Convertir a segundos
@@ -248,7 +250,9 @@ class CompanionBot:
             )
             logger.info(f"Mensajes proactivos habilitados (cada {check_interval} minutos)")
 
-        self.app.run_polling(allowed_updates=Update.ALL_TYPES)
+        # Iniciar el bot
+        self.updater.start_polling()
+        self.updater.idle()
 
 
 def main():
