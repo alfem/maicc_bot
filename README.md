@@ -40,7 +40,7 @@ Un bot de Telegram diseñado para actuar como compañero conversacional, especia
 ### 2. Clonar o descargar el proyecto
 
 ```bash
-cd maicc_bot
+cd agentrouter
 ```
 
 ### 3. Instalar dependencias
