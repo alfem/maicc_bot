@@ -3,6 +3,8 @@ Bot de Telegram que actúa como compañero conversacional.
 """
 import json
 import logging
+import random
+import asyncio
 from datetime import datetime, timedelta
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
@@ -58,6 +60,34 @@ class CompanionBot:
 
         # Registrar manejadores
         self._register_handlers()
+
+    def _calculate_typing_delay(self, text: str) -> float:
+        """
+        Calcula un retraso aleatorio basado en la longitud del texto.
+        Simula el tiempo que tomaría escribir el mensaje.
+
+        Args:
+            text: Texto de la respuesta
+
+        Returns:
+            Tiempo de retraso en segundos
+        """
+        # Palabras por minuto promedio (ajustable)
+        wpm = random.uniform(40, 60)  # Velocidad de escritura aleatoria entre 40-60 palabras/min
+
+        # Contar palabras en el texto
+        word_count = len(text.split())
+
+        # Calcular tiempo base (en segundos)
+        base_delay = (word_count / wpm) * 60
+
+        # Agregar un pequeño retraso aleatorio adicional (0.5-2 segundos)
+        random_delay = random.uniform(0.5, 2.0)
+
+        # Retraso mínimo de 1 segundo, máximo de 20 segundos
+        total_delay = min(max(base_delay + random_delay, 1.0), 20.0)
+
+        return total_delay
 
     def _register_handlers(self):
         """Registra los manejadores de comandos y mensajes."""
@@ -142,11 +172,21 @@ class CompanionBot:
         # Obtener contexto de la conversación
         context_messages = self.conversation_manager.get_context(user.id)
 
-        # Enviar "escribiendo..." mientras se genera la respuesta
-        await update.message.chat.send_action(action="typing")
-
         # Obtener respuesta del LLM
         assistant_response = self.llm_client.get_response(context_messages)
+
+        # Calcular retraso basado en la longitud de la respuesta
+        typing_delay = self._calculate_typing_delay(assistant_response)
+        logger.info(f"Esperando {typing_delay:.2f} segundos antes de responder a {user.id}")
+
+        # Mostrar indicador de "escribiendo..." durante el retraso
+        # El indicador dura 5 segundos, así que lo renovamos si es necesario
+        start_time = asyncio.get_event_loop().time()
+        while (asyncio.get_event_loop().time() - start_time) < typing_delay:
+            await update.message.chat.send_action(action="typing")
+            # Esperar 4 segundos o el tiempo restante, lo que sea menor
+            remaining_time = typing_delay - (asyncio.get_event_loop().time() - start_time)
+            await asyncio.sleep(min(4, remaining_time))
 
         # Guardar respuesta del asistente
         self.conversation_manager.add_message(
@@ -204,12 +244,21 @@ class CompanionBot:
                         "content": "El usuario lleva un rato sin escribir. Inicia una conversación de forma natural y amigable. Puedes preguntar cómo está, proponer un tema interesante para conversar, compartir algo curioso, o simplemente saludar de manera cálida. Sé creativa y espontánea."
                     }
 
-                    # Enviar acción de escritura
-                    await context.bot.send_chat_action(chat_id=user_id, action="typing")
-
                     # Generar mensaje proactivo
                     proactive_messages = context_messages + [proactive_prompt]
                     assistant_response = self.llm_client.get_response(proactive_messages)
+
+                    # Calcular retraso basado en la longitud de la respuesta
+                    typing_delay = self._calculate_typing_delay(assistant_response)
+                    logger.info(f"Esperando {typing_delay:.2f} segundos antes de enviar mensaje proactivo a {user_id}")
+
+                    # Mostrar indicador de "escribiendo..." durante el retraso
+                    start_time = asyncio.get_event_loop().time()
+                    while (asyncio.get_event_loop().time() - start_time) < typing_delay:
+                        await context.bot.send_chat_action(chat_id=user_id, action="typing")
+                        # Esperar 4 segundos o el tiempo restante, lo que sea menor
+                        remaining_time = typing_delay - (asyncio.get_event_loop().time() - start_time)
+                        await asyncio.sleep(min(4, remaining_time))
 
                     # Guardar mensaje del asistente
                     self.conversation_manager.add_message(
