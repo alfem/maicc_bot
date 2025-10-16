@@ -7,6 +7,8 @@ Un bot de Telegram diseñado para actuar como compañero conversacional, especia
 - **Conversaciones personalizadas**: Cada usuario tiene su propio contexto de conversación que se mantiene entre sesiones
 - **IA conversacional**: Utiliza Google Gemini 2.0 Flash para generar respuestas naturales y empáticas
 - **Mensajes proactivos**: El bot inicia conversaciones cuando el usuario lleva tiempo sin escribir
+- **Noticias RSS**: Consulta feeds RSS diariamente y las usa para iniciar conversaciones sobre temas actuales
+- **Retrasos humanos**: Simula tiempo de escritura variable según la longitud de la respuesta
 - **Almacenamiento persistente**: Todas las conversaciones se guardan en archivos JSON
 - **Interfaz web**: Panel de administración para consultar y revisar conversaciones
 - **Filtros por fecha**: Posibilidad de filtrar conversaciones por rangos de fechas
@@ -20,13 +22,15 @@ Un bot de Telegram diseñado para actuar como compañero conversacional, especia
 ├── web_interface.py          # Interfaz web para administración
 ├── conversation_manager.py   # Gestión de conversaciones
 ├── llm_client.py            # Cliente para la API de Google Gemini
+├── news_manager.py          # Gestor de feeds RSS y noticias
 ├── config.json              # Archivo de configuración
 ├── requirements.txt         # Dependencias de Python
 ├── templates/               # Plantillas HTML
 │   ├── login.html
 │   ├── index.html
 │   └── conversation.html
-└── conversations/           # Directorio de conversaciones (se crea automáticamente)
+├── conversations/           # Directorio de conversaciones (se crea automáticamente)
+└── news_cache.json          # Caché de noticias (se crea automáticamente)
 ```
 
 ## Instalación
@@ -75,6 +79,13 @@ Edita el archivo `config.json` con tus credenciales:
     "enabled": true,
     "inactivity_minutes": 60,
     "check_interval_minutes": 15
+  },
+  "news": {
+    "rss_feeds": [
+      "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada",
+      "https://www.elmundo.es/rss/portada.xml"
+    ],
+    "cache_file": "./news_cache.json"
   },
   "web": {
     "host": "0.0.0.0",
@@ -188,6 +199,36 @@ El bot puede enviar mensajes automáticamente cuando un usuario lleva tiempo sin
 - Si encuentra un usuario que no ha escrito en 60 minutos, le enviará un mensaje proactivo
 - NO enviará mensajes entre las 22:00 y las 09:00 (horario de descanso)
 - El horario de "no molestar" funciona correctamente aunque cruce la medianoche
+
+### Configurar noticias RSS
+
+El bot puede consultar noticias de feeds RSS y usarlas para iniciar conversaciones:
+
+```json
+"news": {
+  "rss_feeds": [
+    "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada",
+    "https://www.elmundo.es/rss/portada.xml",
+    "https://www.bbc.com/mundo/topics/cyx5krnw38vt/rss.xml"
+  ],
+  "cache_file": "./news_cache.json"
+}
+```
+
+- `rss_feeds`: Lista de URLs de feeds RSS para consultar (puedes agregar todos los que quieras)
+- `cache_file`: Archivo donde se guardan las noticias (opcional, por defecto `./news_cache.json`)
+
+**Cómo funciona**:
+1. El bot consulta los feeds RSS **una vez al día** automáticamente
+2. Guarda las 10 noticias más recientes de cada feed en caché
+3. Cuando envía un mensaje proactivo, tiene **50% de probabilidad** de usar una noticia aleatoria
+4. El LLM comenta la noticia de forma natural, no la copia literalmente
+
+**Ejemplos de feeds RSS en español**:
+- El País: `https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada`
+- El Mundo: `https://www.elmundo.es/rss/portada.xml`
+- BBC Mundo: `https://www.bbc.com/mundo/topics/cyx5krnw38vt/rss.xml`
+- 20 Minutos: `https://www.20minutos.es/rss/`
 
 ## Estructura de Datos
 

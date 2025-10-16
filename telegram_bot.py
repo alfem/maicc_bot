@@ -11,6 +11,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 
 from conversation_manager import ConversationManager
 from llm_client import LLMClient
+from news_manager import NewsManager
 
 
 # Configurar logging
@@ -49,6 +50,16 @@ class CompanionBot:
             system_prompt=self.config["llm"]["system_prompt"],
             api_url=self.config["llm"]["api_url"]
         )
+
+        # Inicializar gestor de noticias si está configurado
+        rss_feeds = self.config.get("news", {}).get("rss_feeds", [])
+        if rss_feeds:
+            storage_file = self.config.get("news", {}).get("cache_file", "./news_cache.json")
+            self.news_manager = NewsManager(rss_feeds, storage_file)
+            logger.info(f"Gestor de noticias inicializado con {len(rss_feeds)} feeds RSS")
+        else:
+            self.news_manager = None
+            logger.info("Gestor de noticias no configurado")
 
         # Crear aplicación de Telegram
         self.app = Application.builder().token(
@@ -238,10 +249,39 @@ class CompanionBot:
                     # Obtener contexto de la conversación
                     context_messages = self.conversation_manager.get_context(user_id)
 
+                    # Decidir si usar una noticia (50% de probabilidad si hay noticias disponibles)
+                    use_news = False
+                    news_context = ""
+
+                    if self.news_manager and random.random() < 0.5:
+                        news_item = self.news_manager.get_random_news()
+                        if news_item:
+                            use_news = True
+                            news_context = f"\n\nNOTICIA RECIENTE:\nTítulo: {news_item['title']}\n"
+                            if news_item.get('description'):
+                                news_context += f"Resumen: {news_item['description']}\n"
+                            if news_item.get('source'):
+                                news_context += f"Fuente: {news_item['source']}\n"
+
                     # Crear un prompt especial para mensaje proactivo
+                    if use_news:
+                        proactive_content = (
+                            "El usuario lleva un rato sin escribir. Inicia una conversación comentando "
+                            "la siguiente noticia de forma natural y amigable. Menciona lo que te parece "
+                            "interesante o pregunta su opinión al respecto. No copies el texto literal, "
+                            "sino comenta sobre ella de manera conversacional." + news_context
+                        )
+                    else:
+                        proactive_content = (
+                            "El usuario lleva un rato sin escribir. Inicia una conversación de forma "
+                            "natural y amigable. Puedes preguntar cómo está, proponer un tema interesante "
+                            "para conversar, compartir algo curioso, o simplemente saludar de manera cálida. "
+                            "Sé creativa y espontánea."
+                        )
+
                     proactive_prompt = {
                         "role": "user",
-                        "content": "El usuario lleva un rato sin escribir. Inicia una conversación de forma natural y amigable. Puedes preguntar cómo está, proponer un tema interesante para conversar, compartir algo curioso, o simplemente saludar de manera cálida. Sé creativa y espontánea."
+                        "content": proactive_content
                     }
 
                     # Generar mensaje proactivo
@@ -278,24 +318,47 @@ class CompanionBot:
                 except Exception as e:
                     logger.error(f"Error al enviar mensaje proactivo a {user_id}: {e}")
 
+    async def update_news_cache(self, context: ContextTypes.DEFAULT_TYPE):
+        """
+        Actualiza el caché de noticias RSS.
+        Se ejecuta diariamente.
+        """
+        if self.news_manager:
+            logger.info("Iniciando actualización de noticias RSS...")
+            success = self.news_manager.update_news()
+            if success:
+                logger.info(f"Noticias actualizadas: {self.news_manager.get_news_count()} noticias en caché")
+            else:
+                logger.warning("No se pudieron actualizar las noticias")
+
     def run(self):
         """Inicia el bot."""
         logger.info("Iniciando bot de Telegram...")
         logger.info(f"Modelo LLM: {self.config['llm']['model']}")
         logger.info(f"Directorio de conversaciones: {self.config['storage']['conversations_dir']}")
 
+        job_queue = self.app.job_queue
+
         # Configurar job para mensajes proactivos
         proactive_enabled = self.config.get("proactive", {}).get("enabled", True)
         check_interval = self.config.get("proactive", {}).get("check_interval_minutes", 15)
 
         if proactive_enabled:
-            job_queue = self.app.job_queue
             job_queue.run_repeating(
                 self.send_proactive_message,
                 interval=check_interval * 60,  # Convertir a segundos
                 first=60  # Primer chequeo después de 1 minuto
             )
             logger.info(f"Mensajes proactivos habilitados (cada {check_interval} minutos)")
+
+        # Configurar job para actualizar noticias diariamente
+        if self.news_manager:
+            job_queue.run_repeating(
+                self.update_news_cache,
+                interval=24 * 60 * 60,  # Una vez al día (en segundos)
+                first=10  # Primera actualización a los 10 segundos de iniciar
+            )
+            logger.info("Actualización diaria de noticias habilitada")
 
         self.app.run_polling(allowed_updates=Update.ALL_TYPES)
 
