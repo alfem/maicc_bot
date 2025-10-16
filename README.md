@@ -7,6 +7,9 @@ Un bot de Telegram diseñado para actuar como compañero conversacional, especia
 - **Conversaciones personalizadas**: Cada usuario tiene su propio contexto de conversación que se mantiene entre sesiones
 - **IA conversacional**: Utiliza Google Gemini 2.0 Flash para generar respuestas naturales y empáticas
 - **Mensajes proactivos**: El bot inicia conversaciones cuando el usuario lleva tiempo sin escribir
+- **Noticias RSS**: Consulta feeds RSS diariamente y las usa para iniciar conversaciones sobre temas actuales
+- **Retrasos humanos**: Simula tiempo de escritura variable según la longitud de la respuesta
+- **Estado de ánimo dinámico**: La personalidad del bot cambia según la fase lunar y el clima actual
 - **Almacenamiento persistente**: Todas las conversaciones se guardan en archivos JSON
 - **Interfaz web**: Panel de administración para consultar y revisar conversaciones
 - **Filtros por fecha**: Posibilidad de filtrar conversaciones por rangos de fechas
@@ -20,13 +23,16 @@ Un bot de Telegram diseñado para actuar como compañero conversacional, especia
 ├── web_interface.py          # Interfaz web para administración
 ├── conversation_manager.py   # Gestión de conversaciones
 ├── llm_client.py            # Cliente para la API de Google Gemini
+├── news_manager.py          # Gestor de feeds RSS y noticias
+├── mood_manager.py          # Gestor de estado de ánimo (luna + clima)
 ├── config.json              # Archivo de configuración
 ├── requirements.txt         # Dependencias de Python
 ├── templates/               # Plantillas HTML
 │   ├── login.html
 │   ├── index.html
 │   └── conversation.html
-└── conversations/           # Directorio de conversaciones (se crea automáticamente)
+├── conversations/           # Directorio de conversaciones (se crea automáticamente)
+└── news_cache.json          # Caché de noticias (se crea automáticamente)
 ```
 
 ## Instalación
@@ -76,6 +82,17 @@ Edita el archivo `config.json` con tus credenciales:
     "inactivity_minutes": 60,
     "check_interval_minutes": 15
   },
+  "news": {
+    "rss_feeds": [
+      "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada",
+      "https://www.elmundo.es/rss/portada.xml"
+    ],
+    "cache_file": "./news_cache.json"
+  },
+  "mood": {
+    "weather_api_key": "TU_API_KEY_DE_OPENWEATHERMAP_AQUI",
+    "location": "Madrid,ES"
+  },
   "web": {
     "host": "0.0.0.0",
     "port": 8080,
@@ -124,7 +141,8 @@ La interfaz web permite:
 1. **Ver lista de usuarios**: Muestra todos los usuarios que han interactuado con el bot
 2. **Ver conversaciones**: Accede al historial completo de conversación de cada usuario
 3. **Filtrar por fechas**: Consulta conversaciones en rangos de fechas específicos
-4. **Estadísticas**: Número de mensajes, última actividad, etc.
+4. **Ver estado de ánimo**: Cada mensaje del asistente muestra el mood activo (fase lunar y clima)
+5. **Estadísticas**: Número de mensajes, última actividad, etc.
 
 ## Personalización
 
@@ -189,6 +207,76 @@ El bot puede enviar mensajes automáticamente cuando un usuario lleva tiempo sin
 - NO enviará mensajes entre las 22:00 y las 09:00 (horario de descanso)
 - El horario de "no molestar" funciona correctamente aunque cruce la medianoche
 
+### Configurar noticias RSS
+
+El bot puede consultar noticias de feeds RSS y usarlas para iniciar conversaciones:
+
+```json
+"news": {
+  "rss_feeds": [
+    "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada",
+    "https://www.elmundo.es/rss/portada.xml",
+    "https://www.bbc.com/mundo/topics/cyx5krnw38vt/rss.xml"
+  ],
+  "cache_file": "./news_cache.json"
+}
+```
+
+- `rss_feeds`: Lista de URLs de feeds RSS para consultar (puedes agregar todos los que quieras)
+- `cache_file`: Archivo donde se guardan las noticias (opcional, por defecto `./news_cache.json`)
+
+**Cómo funciona**:
+1. El bot consulta los feeds RSS **una vez al día** automáticamente
+2. Guarda las 10 noticias más recientes de cada feed en caché
+3. Cuando envía un mensaje proactivo, tiene **50% de probabilidad** de usar una noticia aleatoria
+4. El LLM comenta la noticia de forma natural, no la copia literalmente
+
+**Ejemplos de feeds RSS en español**:
+- El País: `https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada`
+- El Mundo: `https://www.elmundo.es/rss/portada.xml`
+- BBC Mundo: `https://www.bbc.com/mundo/topics/cyx5krnw38vt/rss.xml`
+- 20 Minutos: `https://www.20minutos.es/rss/`
+
+### Configurar estado de ánimo dinámico
+
+El bot ajusta sutilmente su personalidad según la fase de la luna y el clima:
+
+```json
+"mood": {
+  "weather_api_key": "TU_API_KEY_DE_OPENWEATHERMAP_AQUI",
+  "location": "Madrid,ES"
+}
+```
+
+- `weather_api_key`: API key de OpenWeatherMap (opcional, obtener gratis en https://openweathermap.org/api)
+- `location`: Ubicación para consultar clima en formato "Ciudad,PaísISO" (ej: "Barcelona,ES", "Buenos Aires,AR")
+
+**Cómo funciona**:
+1. **Fase lunar**: El bot calcula la fase de la luna actual y adopta un mood base:
+   - 🌑 Luna nueva: introspectivo y contemplativo
+   - 🌒 Creciente: optimista y entusiasta
+   - 🌓 Cuarto creciente: activo y motivador
+   - 🌔 Gibosa creciente: productivo y organizado
+   - 🌕 Luna llena: expresivo y sociable
+   - 🌖 Gibosa menguante: agradecido y sabio
+   - 🌗 Cuarto menguante: sereno y tranquilo
+   - 🌘 Menguante: contemplativo y filosófico
+
+2. **Clima**: Si tienes configurada la API key, el clima modifica el mood:
+   - ☀️ Despejado: más alegre y enérgico
+   - ☁️ Nublado: más reflexivo y calmado
+   - 🌧️ Lluvia: nostálgico y empático
+   - ⛈️ Tormenta: intenso y dramático
+   - 🌫️ Niebla: misterioso y soñador
+
+3. El bot **nunca menciona explícitamente** su estado de ánimo, simplemente se refleja en su forma de responder
+
+4. El mood se actualiza **cada 6 horas** automáticamente
+
+5. **Registro en logs**: Cada mensaje del asistente guarda el mood completo en el JSON de conversación, permitiendo revisar posteriormente cómo se sentía el bot en cada respuesta a través de la interfaz web
+
+**Nota**: La API key de OpenWeatherMap es opcional. Sin ella, el bot solo usará la fase lunar.
+
 ## Estructura de Datos
 
 Las conversaciones se almacenan en archivos JSON individuales por usuario:
@@ -208,11 +296,23 @@ Las conversaciones se almacenan en archivos JSON individuales por usuario:
     {
       "role": "assistant",
       "content": "¡Hola! Estoy muy bien, gracias...",
-      "timestamp": "2025-01-15T10:30:05"
+      "timestamp": "2025-01-15T10:30:05",
+      "mood": {
+        "moon_phase": "full_moon",
+        "base_mood": "expresivo",
+        "weather": {
+          "condition": "Clear",
+          "description": "cielo claro",
+          "temp": 18.5
+        },
+        "weather_modifier": "alegre y enérgico"
+      }
     }
   ]
 }
 ```
+
+**Nota**: Los mensajes del asistente incluyen un campo `mood` que registra el estado de ánimo del bot en ese momento.
 
 ## Seguridad
 

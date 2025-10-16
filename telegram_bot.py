@@ -3,12 +3,16 @@ Bot de Telegram que actúa como compañero conversacional.
 """
 import json
 import logging
+import random
+import asyncio
 from datetime import datetime, timedelta
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 from conversation_manager import ConversationManager
 from llm_client import LLMClient
+from news_manager import NewsManager
+from mood_manager import MoodManager
 
 
 # Configurar logging
@@ -48,6 +52,23 @@ class CompanionBot:
             api_url=self.config["llm"]["api_url"]
         )
 
+        # Inicializar gestor de noticias si está configurado
+        rss_feeds = self.config.get("news", {}).get("rss_feeds", [])
+        if rss_feeds:
+            storage_file = self.config.get("news", {}).get("cache_file", "./news_cache.json")
+            self.news_manager = NewsManager(rss_feeds, storage_file)
+            logger.info(f"Gestor de noticias inicializado con {len(rss_feeds)} feeds RSS")
+        else:
+            self.news_manager = None
+            logger.info("Gestor de noticias no configurado")
+
+        # Inicializar gestor de estado de ánimo
+        mood_config = self.config.get("mood", {})
+        weather_api_key = mood_config.get("weather_api_key")
+        location = mood_config.get("location", "Madrid,ES")
+        self.mood_manager = MoodManager(weather_api_key, location)
+        logger.info(f"Gestor de estado de ánimo inicializado (ubicación: {location})")
+
         # Crear aplicación de Telegram
         self.app = Application.builder().token(
             self.config["telegram"]["bot_token"]
@@ -58,6 +79,34 @@ class CompanionBot:
 
         # Registrar manejadores
         self._register_handlers()
+
+    def _calculate_typing_delay(self, text: str) -> float:
+        """
+        Calcula un retraso aleatorio basado en la longitud del texto.
+        Simula el tiempo que tomaría escribir el mensaje.
+
+        Args:
+            text: Texto de la respuesta
+
+        Returns:
+            Tiempo de retraso en segundos
+        """
+        # Palabras por minuto promedio (ajustable)
+        wpm = random.uniform(40, 60)  # Velocidad de escritura aleatoria entre 40-60 palabras/min
+
+        # Contar palabras en el texto
+        word_count = len(text.split())
+
+        # Calcular tiempo base (en segundos)
+        base_delay = (word_count / wpm) * 60
+
+        # Agregar un pequeño retraso aleatorio adicional (0.5-2 segundos)
+        random_delay = random.uniform(0.5, 2.0)
+
+        # Retraso mínimo de 1 segundo, máximo de 20 segundos
+        total_delay = min(max(base_delay + random_delay, 1.0), 20.0)
+
+        return total_delay
 
     def _register_handlers(self):
         """Registra los manejadores de comandos y mensajes."""
@@ -142,17 +191,32 @@ class CompanionBot:
         # Obtener contexto de la conversación
         context_messages = self.conversation_manager.get_context(user.id)
 
-        # Enviar "escribiendo..." mientras se genera la respuesta
-        await update.message.chat.send_action(action="typing")
+        # Obtener mood actual
+        current_mood = self.mood_manager.get_current_mood()
+        mood_prompt = self.mood_manager.get_mood_prompt()
 
-        # Obtener respuesta del LLM
-        assistant_response = self.llm_client.get_response(context_messages)
+        # Obtener respuesta del LLM con el mood actual
+        assistant_response = self.llm_client.get_response(context_messages, mood_prompt)
 
-        # Guardar respuesta del asistente
+        # Calcular retraso basado en la longitud de la respuesta
+        typing_delay = self._calculate_typing_delay(assistant_response)
+        logger.info(f"Esperando {typing_delay:.2f} segundos antes de responder a {user.id}")
+
+        # Mostrar indicador de "escribiendo..." durante el retraso
+        # El indicador dura 5 segundos, así que lo renovamos si es necesario
+        start_time = asyncio.get_event_loop().time()
+        while (asyncio.get_event_loop().time() - start_time) < typing_delay:
+            await update.message.chat.send_action(action="typing")
+            # Esperar 4 segundos o el tiempo restante, lo que sea menor
+            remaining_time = typing_delay - (asyncio.get_event_loop().time() - start_time)
+            await asyncio.sleep(min(4, remaining_time))
+
+        # Guardar respuesta del asistente con información de mood
         self.conversation_manager.add_message(
             user_id=user.id,
             role="assistant",
-            content=assistant_response
+            content=assistant_response,
+            mood_info=current_mood
         )
 
         # Enviar respuesta al usuario
@@ -198,24 +262,67 @@ class CompanionBot:
                     # Obtener contexto de la conversación
                     context_messages = self.conversation_manager.get_context(user_id)
 
+                    # Decidir si usar una noticia (50% de probabilidad si hay noticias disponibles)
+                    use_news = False
+                    news_context = ""
+
+                    if self.news_manager and random.random() < 0.5:
+                        news_item = self.news_manager.get_random_news()
+                        if news_item:
+                            use_news = True
+                            news_context = f"\n\nNOTICIA RECIENTE:\nTítulo: {news_item['title']}\n"
+                            if news_item.get('description'):
+                                news_context += f"Resumen: {news_item['description']}\n"
+                            if news_item.get('source'):
+                                news_context += f"Fuente: {news_item['source']}\n"
+
                     # Crear un prompt especial para mensaje proactivo
+                    if use_news:
+                        proactive_content = (
+                            "El usuario lleva un rato sin escribir. Inicia una conversación comentando "
+                            "la siguiente noticia de forma natural y amigable. Menciona lo que te parece "
+                            "interesante o pregunta su opinión al respecto. No copies el texto literal, "
+                            "sino comenta sobre ella de manera conversacional." + news_context
+                        )
+                    else:
+                        proactive_content = (
+                            "El usuario lleva un rato sin escribir. Inicia una conversación de forma "
+                            "natural y amigable. Puedes preguntar cómo está, proponer un tema interesante "
+                            "para conversar, compartir algo curioso, o simplemente saludar de manera cálida. "
+                            "Sé creativa y espontánea."
+                        )
+
                     proactive_prompt = {
                         "role": "user",
-                        "content": "El usuario lleva un rato sin escribir. Inicia una conversación de forma natural y amigable. Puedes preguntar cómo está, proponer un tema interesante para conversar, compartir algo curioso, o simplemente saludar de manera cálida. Sé creativa y espontánea."
+                        "content": proactive_content
                     }
 
-                    # Enviar acción de escritura
-                    await context.bot.send_chat_action(chat_id=user_id, action="typing")
+                    # Obtener mood actual
+                    current_mood = self.mood_manager.get_current_mood()
+                    mood_prompt = self.mood_manager.get_mood_prompt()
 
-                    # Generar mensaje proactivo
+                    # Generar mensaje proactivo con mood
                     proactive_messages = context_messages + [proactive_prompt]
-                    assistant_response = self.llm_client.get_response(proactive_messages)
+                    assistant_response = self.llm_client.get_response(proactive_messages, mood_prompt)
 
-                    # Guardar mensaje del asistente
+                    # Calcular retraso basado en la longitud de la respuesta
+                    typing_delay = self._calculate_typing_delay(assistant_response)
+                    logger.info(f"Esperando {typing_delay:.2f} segundos antes de enviar mensaje proactivo a {user_id}")
+
+                    # Mostrar indicador de "escribiendo..." durante el retraso
+                    start_time = asyncio.get_event_loop().time()
+                    while (asyncio.get_event_loop().time() - start_time) < typing_delay:
+                        await context.bot.send_chat_action(chat_id=user_id, action="typing")
+                        # Esperar 4 segundos o el tiempo restante, lo que sea menor
+                        remaining_time = typing_delay - (asyncio.get_event_loop().time() - start_time)
+                        await asyncio.sleep(min(4, remaining_time))
+
+                    # Guardar mensaje del asistente con información de mood
                     self.conversation_manager.add_message(
                         user_id=user_id,
                         role="assistant",
-                        content=assistant_response
+                        content=assistant_response,
+                        mood_info=current_mood
                     )
 
                     # Enviar mensaje al usuario
@@ -229,24 +336,47 @@ class CompanionBot:
                 except Exception as e:
                     logger.error(f"Error al enviar mensaje proactivo a {user_id}: {e}")
 
+    async def update_news_cache(self, context: ContextTypes.DEFAULT_TYPE):
+        """
+        Actualiza el caché de noticias RSS.
+        Se ejecuta diariamente.
+        """
+        if self.news_manager:
+            logger.info("Iniciando actualización de noticias RSS...")
+            success = self.news_manager.update_news()
+            if success:
+                logger.info(f"Noticias actualizadas: {self.news_manager.get_news_count()} noticias en caché")
+            else:
+                logger.warning("No se pudieron actualizar las noticias")
+
     def run(self):
         """Inicia el bot."""
         logger.info("Iniciando bot de Telegram...")
         logger.info(f"Modelo LLM: {self.config['llm']['model']}")
         logger.info(f"Directorio de conversaciones: {self.config['storage']['conversations_dir']}")
 
+        job_queue = self.app.job_queue
+
         # Configurar job para mensajes proactivos
         proactive_enabled = self.config.get("proactive", {}).get("enabled", True)
         check_interval = self.config.get("proactive", {}).get("check_interval_minutes", 15)
 
         if proactive_enabled:
-            job_queue = self.app.job_queue
             job_queue.run_repeating(
                 self.send_proactive_message,
                 interval=check_interval * 60,  # Convertir a segundos
                 first=60  # Primer chequeo después de 1 minuto
             )
             logger.info(f"Mensajes proactivos habilitados (cada {check_interval} minutos)")
+
+        # Configurar job para actualizar noticias diariamente
+        if self.news_manager:
+            job_queue.run_repeating(
+                self.update_news_cache,
+                interval=24 * 60 * 60,  # Una vez al día (en segundos)
+                first=10  # Primera actualización a los 10 segundos de iniciar
+            )
+            logger.info("Actualización diaria de noticias habilitada")
 
         self.app.run_polling(allowed_updates=Update.ALL_TYPES)
 
