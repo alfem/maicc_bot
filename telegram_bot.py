@@ -12,6 +12,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 from conversation_manager import ConversationManager
 from llm_client import LLMClient
 from news_manager import NewsManager
+from mood_manager import MoodManager
 
 
 # Configurar logging
@@ -60,6 +61,13 @@ class CompanionBot:
         else:
             self.news_manager = None
             logger.info("Gestor de noticias no configurado")
+
+        # Inicializar gestor de estado de ánimo
+        mood_config = self.config.get("mood", {})
+        weather_api_key = mood_config.get("weather_api_key")
+        location = mood_config.get("location", "Madrid,ES")
+        self.mood_manager = MoodManager(weather_api_key, location)
+        logger.info(f"Gestor de estado de ánimo inicializado (ubicación: {location})")
 
         # Crear aplicación de Telegram
         self.app = Application.builder().token(
@@ -183,8 +191,12 @@ class CompanionBot:
         # Obtener contexto de la conversación
         context_messages = self.conversation_manager.get_context(user.id)
 
-        # Obtener respuesta del LLM
-        assistant_response = self.llm_client.get_response(context_messages)
+        # Obtener mood actual
+        current_mood = self.mood_manager.get_current_mood()
+        mood_prompt = self.mood_manager.get_mood_prompt()
+
+        # Obtener respuesta del LLM con el mood actual
+        assistant_response = self.llm_client.get_response(context_messages, mood_prompt)
 
         # Calcular retraso basado en la longitud de la respuesta
         typing_delay = self._calculate_typing_delay(assistant_response)
@@ -199,11 +211,12 @@ class CompanionBot:
             remaining_time = typing_delay - (asyncio.get_event_loop().time() - start_time)
             await asyncio.sleep(min(4, remaining_time))
 
-        # Guardar respuesta del asistente
+        # Guardar respuesta del asistente con información de mood
         self.conversation_manager.add_message(
             user_id=user.id,
             role="assistant",
-            content=assistant_response
+            content=assistant_response,
+            mood_info=current_mood
         )
 
         # Enviar respuesta al usuario
@@ -284,9 +297,13 @@ class CompanionBot:
                         "content": proactive_content
                     }
 
-                    # Generar mensaje proactivo
+                    # Obtener mood actual
+                    current_mood = self.mood_manager.get_current_mood()
+                    mood_prompt = self.mood_manager.get_mood_prompt()
+
+                    # Generar mensaje proactivo con mood
                     proactive_messages = context_messages + [proactive_prompt]
-                    assistant_response = self.llm_client.get_response(proactive_messages)
+                    assistant_response = self.llm_client.get_response(proactive_messages, mood_prompt)
 
                     # Calcular retraso basado en la longitud de la respuesta
                     typing_delay = self._calculate_typing_delay(assistant_response)
@@ -300,11 +317,12 @@ class CompanionBot:
                         remaining_time = typing_delay - (asyncio.get_event_loop().time() - start_time)
                         await asyncio.sleep(min(4, remaining_time))
 
-                    # Guardar mensaje del asistente
+                    # Guardar mensaje del asistente con información de mood
                     self.conversation_manager.add_message(
                         user_id=user_id,
                         role="assistant",
-                        content=assistant_response
+                        content=assistant_response,
+                        mood_info=current_mood
                     )
 
                     # Enviar mensaje al usuario

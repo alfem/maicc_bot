@@ -52,7 +52,7 @@ class ConversationManager:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
     def add_message(self, user_id: int, role: str, content: str,
-                   username: str = "", first_name: str = ""):
+                   username: str = "", first_name: str = "", mood_info: Optional[Dict] = None):
         """
         Añade un mensaje a la conversación de un usuario.
 
@@ -62,6 +62,7 @@ class ConversationManager:
             content: Contenido del mensaje
             username: Nombre de usuario de Telegram (opcional)
             first_name: Nombre del usuario (opcional)
+            mood_info: Información del estado de ánimo del bot (opcional, solo para role='assistant')
         """
         data = self._load_user_data(user_id)
 
@@ -77,6 +78,11 @@ class ConversationManager:
             "content": content,
             "timestamp": datetime.now().isoformat()
         }
+
+        # Agregar información de mood si es un mensaje del asistente y hay mood disponible
+        if role == "assistant" and mood_info:
+            message["mood"] = mood_info
+
         data["messages"].append(message)
 
         self._save_user_data(user_id, data)
