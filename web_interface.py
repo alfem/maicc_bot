@@ -8,6 +8,7 @@ from functools import wraps
 
 from conversation_manager import ConversationManager
 from logger_config import setup_logging, get_logger
+from config_reloader import create_reload_signal
 
 
 # Cargar configuración
@@ -146,6 +147,110 @@ def api_user_messages(user_id):
         messages = user_data.get('messages', [])
 
     return jsonify(messages)
+
+
+@app.route('/settings', methods=['GET', 'POST'])
+@login_required
+def settings():
+    """Página de configuración del bot."""
+    client_ip = request.remote_addr
+
+    if request.method == 'POST':
+        logger.info(f"Guardando cambios de configuración desde {client_ip}")
+
+        try:
+            # Cargar configuración actual
+            with open('config.json', 'r', encoding='utf-8') as f:
+                current_config = json.load(f)
+
+            # Actualizar valores desde el formulario
+            # LLM
+            current_config['llm']['system_prompt'] = request.form.get('system_prompt', '').strip()
+            current_config['llm']['temperature'] = float(request.form.get('temperature', 0.7))
+            current_config['llm']['max_tokens'] = int(request.form.get('max_tokens', 1024))
+
+            # Proactive messaging
+            current_config['proactive']['inactivity_minutes'] = int(request.form.get('inactivity_minutes', 60))
+
+            # Quiet hours
+            quiet_hours_enabled = request.form.get('quiet_hours_enabled') == 'on'
+            current_config['proactive']['quiet_hours']['enabled'] = quiet_hours_enabled
+            current_config['proactive']['quiet_hours']['start'] = request.form.get('quiet_hours_start', '22:00')
+            current_config['proactive']['quiet_hours']['end'] = request.form.get('quiet_hours_end', '09:00')
+
+            # RSS Feeds (uno por línea)
+            rss_feeds_text = request.form.get('rss_feeds', '').strip()
+            if rss_feeds_text:
+                rss_feeds = [feed.strip() for feed in rss_feeds_text.split('\n') if feed.strip()]
+                current_config['news']['rss_feeds'] = rss_feeds
+            else:
+                current_config['news']['rss_feeds'] = []
+
+            # Admin password
+            new_password = request.form.get('admin_password', '').strip()
+            if new_password:
+                current_config['web']['admin_password'] = new_password
+                # Actualizar secret_key de Flask también
+                app.secret_key = new_password
+                logger.info("Contraseña de administrador actualizada")
+
+            # Guardar configuración
+            with open('config.json', 'w', encoding='utf-8') as f:
+                json.dump(current_config, f, indent=2, ensure_ascii=False)
+
+            logger.info("Configuración guardada exitosamente")
+
+            # Actualizar la variable global config
+            global config
+            config = current_config
+
+            # Crear señal de recarga para el bot
+            create_reload_signal(
+                reason="Configuración actualizada desde interfaz web",
+                source=f"web_interface ({client_ip})"
+            )
+
+            return render_template('settings.html', config=config, success=True, reload_pending=True)
+
+        except Exception as e:
+            logger.error(f"Error al guardar configuración: {e}", exc_info=True)
+            return render_template('settings.html', config=config, error=str(e))
+
+    # GET - mostrar formulario
+    logger.debug(f"Acceso a configuración desde {client_ip}")
+    return render_template('settings.html', config=config)
+
+
+@app.route('/reload', methods=['POST'])
+@login_required
+def reload_config():
+    """Solicita recarga inmediata de la configuración del bot."""
+    client_ip = request.remote_addr
+    logger.info(f"Recarga manual de configuración solicitada desde {client_ip}")
+
+    try:
+        success = create_reload_signal(
+            reason="Recarga manual solicitada desde interfaz web",
+            source=f"web_interface ({client_ip})"
+        )
+
+        if success:
+            return jsonify({
+                "success": True,
+                "message": "Señal de recarga enviada. El bot aplicará los cambios en 30 segundos o menos."
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "message": "Error al crear señal de recarga"
+            }), 500
+
+    except Exception as e:
+        logger.error(f"Error al solicitar recarga: {e}", exc_info=True)
+        return jsonify({
+            "success": False,
+            "message": f"Error: {str(e)}"
+        }), 500
 
 
 def main():

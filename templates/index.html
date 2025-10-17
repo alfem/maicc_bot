@@ -35,7 +35,12 @@
             font-size: 24px;
         }
 
-        .logout-btn {
+        .nav-links {
+            display: flex;
+            gap: 15px;
+        }
+
+        .nav-link, .logout-btn {
             background: rgba(255, 255, 255, 0.2);
             color: white;
             padding: 8px 16px;
@@ -44,7 +49,7 @@
             transition: background 0.3s;
         }
 
-        .logout-btn:hover {
+        .nav-link:hover, .logout-btn:hover {
             background: rgba(255, 255, 255, 0.3);
         }
 
@@ -125,7 +130,10 @@
     <div class="header">
         <div class="header-content">
             <h1>🤝 Bot Compañero - Panel de Administración</h1>
-            <a href="/logout" class="logout-btn">Cerrar sesión</a>
+            <div class="nav-links">
+                <a href="/settings" class="nav-link">⚙️ Configuración</a>
+                <a href="/logout" class="logout-btn">Cerrar sesión</a>
+            </div>
         </div>
     </div>
 

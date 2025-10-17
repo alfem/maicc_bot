@@ -14,6 +14,7 @@ from llm_client import LLMClient
 from news_manager import NewsManager
 from mood_manager import MoodManager
 from logger_config import setup_logging, get_logger
+from config_reloader import ConfigReloader
 
 # Logger específico para Telegram (se inicializará después de cargar config)
 logger = None
@@ -84,6 +85,10 @@ class CompanionBot:
 
         # Diccionario para rastrear la última actividad de cada usuario
         self.user_last_activity = {}
+
+        # Inicializar reloader de configuración
+        self.config_reloader = ConfigReloader(config_file)
+        logger.info("Sistema de recarga de configuración inicializado")
 
         # Registrar manejadores
         self._register_handlers()
@@ -372,6 +377,16 @@ class CompanionBot:
             else:
                 logger.warning("No se pudieron actualizar las noticias")
 
+    async def check_config_reload(self, context: ContextTypes.DEFAULT_TYPE):
+        """
+        Verifica si hay señal de recarga de configuración y la aplica.
+        Se ejecuta periódicamente.
+        """
+        if self.config_reloader.check_reload_signal():
+            logger.info("Señal de recarga detectada, recargando configuración...")
+            self.config_reloader.reload_config(self)
+            logger.info("Recarga de configuración completada")
+
     def run(self):
         """Inicia el bot."""
         logger.info("="*60)
@@ -406,6 +421,14 @@ class CompanionBot:
             logger.info("Actualización diaria de noticias habilitada")
         else:
             logger.info("Gestor de noticias no disponible")
+
+        # Configurar job para verificar recarga de configuración
+        job_queue.run_repeating(
+            self.check_config_reload,
+            interval=30,  # Cada 30 segundos
+            first=5  # Primera verificación a los 5 segundos de iniciar
+        )
+        logger.info("Verificación de recarga de configuración habilitada (cada 30 segundos)")
 
         logger.info("Bot iniciado. Esperando mensajes...")
         logger.info("="*60)
