@@ -242,6 +242,9 @@
 
         <div class="filters">
             <h3>🔍 Filtrar por fecha</h3>
+            <p style="color: #666; font-size: 14px; margin-bottom: 10px;">
+                Por defecto se muestran los mensajes de ayer y hoy. Usa los filtros para ver otros rangos.
+            </p>
             <form method="GET" class="filter-form">
                 <div class="form-group">
                     <label for="start_date">Fecha inicio:</label>
@@ -252,7 +255,7 @@
                     <input type="date" id="end_date" name="end_date" value="{{ end_date }}">
                 </div>
                 <button type="submit" class="filter-btn">Filtrar</button>
-                <a href="/user/{{ user_data.user_id }}" class="clear-btn">Limpiar</a>
+                <a href="/user/{{ user_data.user_id }}" class="clear-btn">Por Defecto</a>
             </form>
         </div>
 
