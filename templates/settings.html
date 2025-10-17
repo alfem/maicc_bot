@@ -124,13 +124,19 @@
         input[type="password"],
         input[type="number"],
         input[type="time"],
-        textarea {
+        textarea,
+        select {
             width: 100%;
             padding: 10px;
             border: 1px solid #ddd;
             border-radius: 5px;
             font-size: 14px;
             font-family: inherit;
+        }
+
+        select {
+            cursor: pointer;
+            background-color: white;
         }
 
         input[type="number"] {
@@ -279,6 +285,25 @@
             <!-- LLM Configuration -->
             <div class="form-section">
                 <h2>🤖 Configuración del LLM</h2>
+
+                <div class="form-group">
+                    <label for="model">Modelo</label>
+                    <select id="model" name="model" required>
+                        <optgroup label="Gemini 2.5 (Recomendado)">
+                            <option value="gemini-2.5-pro" {% if config.llm.model == 'gemini-2.5-pro' %}selected{% endif %}>Gemini 2.5 Pro (Más potente)</option>
+                            <option value="gemini-2.5-flash" {% if config.llm.model == 'gemini-2.5-flash' %}selected{% endif %}>Gemini 2.5 Flash (Equilibrado)</option>
+                            <option value="gemini-2.5-flash-lite" {% if config.llm.model == 'gemini-2.5-flash-lite' %}selected{% endif %}>Gemini 2.5 Flash-Lite (Rápido y económico)</option>
+                        </optgroup>
+                        <optgroup label="Gemini 2.0">
+                            <option value="gemini-2.0-flash" {% if config.llm.model == 'gemini-2.0-flash' %}selected{% endif %}>Gemini 2.0 Flash</option>
+                            <option value="gemini-2.0-flash-lite" {% if config.llm.model == 'gemini-2.0-flash-lite' %}selected{% endif %}>Gemini 2.0 Flash-Lite</option>
+                        </optgroup>
+                        <optgroup label="Experimentales">
+                            <option value="gemini-2.0-flash-exp" {% if config.llm.model == 'gemini-2.0-flash-exp' %}selected{% endif %}>Gemini 2.0 Flash Experimental</option>
+                        </optgroup>
+                    </select>
+                    <span class="help-text">Selecciona el modelo de IA que usará el bot. Los modelos 2.5 son más recientes y potentes.</span>
+                </div>
 
                 <div class="form-group">
                     <label for="system_prompt">System Prompt</label>

@@ -173,6 +173,7 @@ def settings():
 
             # Actualizar valores desde el formulario
             # LLM
+            current_config['llm']['model'] = request.form.get('model', 'gemini-2.5-flash').strip()
             current_config['llm']['system_prompt'] = request.form.get('system_prompt', '').strip()
             current_config['llm']['temperature'] = float(request.form.get('temperature', 0.7))
             current_config['llm']['max_tokens'] = int(request.form.get('max_tokens', 1024))
