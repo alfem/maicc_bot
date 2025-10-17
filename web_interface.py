@@ -97,13 +97,21 @@ def user_conversation(user_id):
     client_ip = request.remote_addr
     logger.info(f"Acceso a conversación del usuario {user_id} desde {client_ip}")
 
-    # Obtener parámetros de fecha (opcional)
+    user_data = conversation_manager.get_full_history(user_id)
+
+    # Obtener parámetros de fecha
     start_date = request.args.get('start_date', '')
     end_date = request.args.get('end_date', '')
 
-    user_data = conversation_manager.get_full_history(user_id)
+    # Si no se especifican fechas, usar por defecto el día anterior y hoy
+    if not start_date and not end_date:
+        today = datetime.now().date()
+        yesterday = today - timedelta(days=1)
+        start_date = yesterday.strftime('%Y-%m-%d')
+        end_date = today.strftime('%Y-%m-%d')
+        logger.debug(f"Usando filtro por defecto: {start_date} a {end_date}")
 
-    # Filtrar por fecha si se especifica
+    # Filtrar por fecha
     messages = user_data.get('messages', [])
     if start_date and end_date:
         logger.debug(f"Filtrando mensajes por fecha: {start_date} a {end_date}")
@@ -165,6 +173,7 @@ def settings():
 
             # Actualizar valores desde el formulario
             # LLM
+            current_config['llm']['model'] = request.form.get('model', 'gemini-2.5-flash').strip()
             current_config['llm']['system_prompt'] = request.form.get('system_prompt', '').strip()
             current_config['llm']['temperature'] = float(request.form.get('temperature', 0.7))
             current_config['llm']['max_tokens'] = int(request.form.get('max_tokens', 1024))
