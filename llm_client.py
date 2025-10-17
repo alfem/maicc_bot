@@ -3,6 +3,10 @@ Cliente para interactuar con la API de Google Gemini.
 """
 import google.generativeai as genai
 from typing import List, Dict, Optional
+from logger_config import get_logger
+
+# Logger específico para LLM
+logger = get_logger('llm')
 
 
 class LLMClient:
@@ -22,6 +26,9 @@ class LLMClient:
             system_prompt: Prompt del sistema que define el comportamiento del asistente
             api_url: No usado para Gemini (mantenido por compatibilidad)
         """
+        logger.info(f"Inicializando LLMClient con modelo: {model}")
+        logger.debug(f"Configuración - max_tokens: {max_tokens}, temperature: {temperature}")
+
         # Configurar API key
         genai.configure(api_key=api_key)
 
@@ -42,6 +49,8 @@ class LLMClient:
         self.base_model_name = model
         self.api_key = api_key
 
+        logger.info("LLMClient inicializado correctamente")
+
     def update_system_prompt(self, additional_context: str = ""):
         """
         Actualiza el system prompt del modelo con contexto adicional.
@@ -49,9 +58,12 @@ class LLMClient:
         Args:
             additional_context: Texto adicional para agregar al system prompt
         """
+        logger.debug("Actualizando system prompt con contexto adicional")
+
         full_prompt = self.system_prompt
         if additional_context:
             full_prompt += "\n" + additional_context
+            logger.debug(f"Contexto adicional agregado (longitud: {len(additional_context)} caracteres)")
 
         # Recrear el modelo con el nuevo system instruction
         self.model = genai.GenerativeModel(
@@ -72,8 +84,11 @@ class LLMClient:
             Respuesta generada por el LLM
         """
         try:
+            logger.info(f"Solicitando respuesta del LLM (mensajes en contexto: {len(messages)})")
+
             # Actualizar el system prompt si hay contexto de mood
             if mood_context:
+                logger.debug("Incluyendo contexto de mood en la solicitud")
                 self.update_system_prompt(mood_context)
 
             # Convertir formato de mensajes a formato Gemini
@@ -86,17 +101,22 @@ class LLMClient:
                     "parts": [msg["content"]]
                 })
 
+            logger.debug(f"Historial convertido: {len(history)} mensajes")
+
             # Crear chat con historial
             chat = self.model.start_chat(history=history)
 
             # Enviar el último mensaje
             last_message = messages[-1]["content"] if messages else ""
+            logger.debug(f"Enviando mensaje al LLM: '{last_message[:50]}...'")
+
             response = chat.send_message(last_message)
 
+            logger.info(f"Respuesta recibida del LLM (longitud: {len(response.text)} caracteres)")
             return response.text
 
         except Exception as e:
-            print(f"Error de API: {e}")
+            logger.error(f"Error al comunicarse con la API de Gemini: {e}", exc_info=True)
             return "Disculpa, hubo un problema al comunicarme con el servicio. ¿Podrías intentarlo de nuevo?"
 
     def chat(self, user_message: str, context: List[Dict[str, str]] = None) -> str:
@@ -110,6 +130,7 @@ class LLMClient:
         Returns:
             Respuesta del asistente
         """
+        logger.debug(f"Método chat llamado con mensaje: '{user_message[:50]}...'")
         messages = context.copy() if context else []
         messages.append({"role": "user", "content": user_message})
 

@@ -13,14 +13,11 @@ from conversation_manager import ConversationManager
 from llm_client import LLMClient
 from news_manager import NewsManager
 from mood_manager import MoodManager
+from logger_config import setup_logging, get_logger
+from config_reloader import ConfigReloader
 
-
-# Configurar logging
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
+# Logger específico para Telegram (se inicializará después de cargar config)
+logger = None
 
 
 class CompanionBot:
@@ -36,6 +33,18 @@ class CompanionBot:
         # Cargar configuración
         with open(config_file, 'r', encoding='utf-8') as f:
             self.config = json.load(f)
+
+        # Configurar sistema de logging
+        global logger
+        loggers = setup_logging(self.config)
+        logger = loggers.get('telegram')
+        if not logger:
+            # Fallback si no se configuró el logger de telegram
+            logger = get_logger('telegram')
+
+        logger.info("="*60)
+        logger.info("Inicializando CompanionBot")
+        logger.info("="*60)
 
         # Inicializar componentes
         self.conversation_manager = ConversationManager(
@@ -76,6 +85,10 @@ class CompanionBot:
 
         # Diccionario para rastrear la última actividad de cada usuario
         self.user_last_activity = {}
+
+        # Inicializar reloader de configuración
+        self.config_reloader = ConfigReloader(config_file)
+        logger.info("Sistema de recarga de configuración inicializado")
 
         # Registrar manejadores
         self._register_handlers()
@@ -121,6 +134,8 @@ class CompanionBot:
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Maneja el comando /start."""
         user = update.effective_user
+        logger.info(f"Comando /start recibido de usuario {user.id} ({user.username}, {user.first_name})")
+
         welcome_message = (
             f"¡Hola {user.first_name}! 👋\n\n"
             "Soy tu compañero de conversación. Estoy aquí para charlar contigo, "
@@ -137,10 +152,13 @@ class CompanionBot:
         # Actualizar última actividad
         self.user_last_activity[user.id] = datetime.now()
 
-        logger.info(f"Usuario {user.id} ({user.username}) inició el bot")
+        logger.info(f"Mensaje de bienvenida enviado a usuario {user.id}")
 
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Maneja el comando /help."""
+        user = update.effective_user
+        logger.info(f"Comando /help recibido de usuario {user.id}")
+
         help_message = (
             "🤝 *Cómo usar el bot*\n\n"
             "Simplemente escribe lo que quieras contarme y yo te responderé. "
@@ -158,6 +176,7 @@ class CompanionBot:
     async def reset_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Maneja el comando /reset para borrar el historial."""
         user_id = update.effective_user.id
+        logger.info(f"Comando /reset recibido de usuario {user_id}")
 
         self.conversation_manager.clear_user_history(user_id)
 
@@ -167,17 +186,18 @@ class CompanionBot:
         )
 
         await update.message.reply_text(reset_message)
-        logger.info(f"Usuario {user_id} reinició su conversación")
+        logger.info(f"Historial de conversación borrado para usuario {user_id}")
 
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Maneja los mensajes de texto del usuario."""
         user = update.effective_user
         user_message = update.message.text
 
-        logger.info(f"Mensaje de {user.id} ({user.username}): {user_message}")
+        logger.info(f"Mensaje recibido de usuario {user.id} ({user.username}): '{user_message[:100]}...'")
 
         # Actualizar última actividad
         self.user_last_activity[user.id] = datetime.now()
+        logger.debug(f"Última actividad actualizada para usuario {user.id}")
 
         # Guardar mensaje del usuario
         self.conversation_manager.add_message(
@@ -187,15 +207,19 @@ class CompanionBot:
             username=user.username or "",
             first_name=user.first_name or ""
         )
+        logger.debug(f"Mensaje de usuario guardado en conversación {user.id}")
 
         # Obtener contexto de la conversación
         context_messages = self.conversation_manager.get_context(user.id)
+        logger.debug(f"Contexto obtenido: {len(context_messages)} mensajes")
 
         # Obtener mood actual
         current_mood = self.mood_manager.get_current_mood()
         mood_prompt = self.mood_manager.get_mood_prompt()
+        logger.debug(f"Mood actual: {current_mood.get('base_mood', 'N/A')}")
 
         # Obtener respuesta del LLM con el mood actual
+        logger.debug(f"Solicitando respuesta al LLM para usuario {user.id}")
         assistant_response = self.llm_client.get_response(context_messages, mood_prompt)
 
         # Calcular retraso basado en la longitud de la respuesta
@@ -222,12 +246,14 @@ class CompanionBot:
         # Enviar respuesta al usuario
         await update.message.reply_text(assistant_response)
 
-        logger.info(f"Respuesta enviada a {user.id}")
+        logger.info(f"Respuesta enviada a usuario {user.id} (longitud: {len(assistant_response)} caracteres)")
 
     async def send_proactive_message(self, context: ContextTypes.DEFAULT_TYPE):
         """
         Envía mensajes proactivos a usuarios que llevan tiempo sin escribir.
         """
+        logger.debug("Verificando usuarios para mensajes proactivos")
+
         # Verificar horario de "no molestar"
         quiet_hours = self.config.get("proactive", {}).get("quiet_hours", {})
         if quiet_hours.get("enabled", False):
@@ -258,6 +284,7 @@ class CompanionBot:
             time_inactive = (now - last_activity).total_seconds() / 60
 
             if time_inactive >= inactivity_threshold:
+                logger.info(f"Usuario {user_id} inactivo por {time_inactive:.1f} minutos. Enviando mensaje proactivo...")
                 try:
                     # Obtener contexto de la conversación
                     context_messages = self.conversation_manager.get_context(user_id)
@@ -270,6 +297,7 @@ class CompanionBot:
                         news_item = self.news_manager.get_random_news()
                         if news_item:
                             use_news = True
+                            logger.debug(f"Usando noticia en mensaje proactivo: {news_item['title'][:50]}...")
                             news_context = f"\n\nNOTICIA RECIENTE:\nTítulo: {news_item['title']}\n"
                             if news_item.get('description'):
                                 news_context += f"Resumen: {news_item['description']}\n"
@@ -331,10 +359,10 @@ class CompanionBot:
                     # Actualizar última actividad (para no enviar otro mensaje inmediatamente)
                     self.user_last_activity[user_id] = datetime.now()
 
-                    logger.info(f"Mensaje proactivo enviado a {user_id}")
+                    logger.info(f"Mensaje proactivo enviado exitosamente a usuario {user_id}")
 
                 except Exception as e:
-                    logger.error(f"Error al enviar mensaje proactivo a {user_id}: {e}")
+                    logger.error(f"Error al enviar mensaje proactivo a usuario {user_id}: {e}", exc_info=True)
 
     async def update_news_cache(self, context: ContextTypes.DEFAULT_TYPE):
         """
@@ -349,9 +377,21 @@ class CompanionBot:
             else:
                 logger.warning("No se pudieron actualizar las noticias")
 
+    async def check_config_reload(self, context: ContextTypes.DEFAULT_TYPE):
+        """
+        Verifica si hay señal de recarga de configuración y la aplica.
+        Se ejecuta periódicamente.
+        """
+        if self.config_reloader.check_reload_signal():
+            logger.info("Señal de recarga detectada, recargando configuración...")
+            self.config_reloader.reload_config(self)
+            logger.info("Recarga de configuración completada")
+
     def run(self):
         """Inicia el bot."""
+        logger.info("="*60)
         logger.info("Iniciando bot de Telegram...")
+        logger.info("="*60)
         logger.info(f"Modelo LLM: {self.config['llm']['model']}")
         logger.info(f"Directorio de conversaciones: {self.config['storage']['conversations_dir']}")
 
@@ -368,6 +408,8 @@ class CompanionBot:
                 first=60  # Primer chequeo después de 1 minuto
             )
             logger.info(f"Mensajes proactivos habilitados (cada {check_interval} minutos)")
+        else:
+            logger.info("Mensajes proactivos deshabilitados")
 
         # Configurar job para actualizar noticias diariamente
         if self.news_manager:
@@ -377,7 +419,19 @@ class CompanionBot:
                 first=10  # Primera actualización a los 10 segundos de iniciar
             )
             logger.info("Actualización diaria de noticias habilitada")
+        else:
+            logger.info("Gestor de noticias no disponible")
 
+        # Configurar job para verificar recarga de configuración
+        job_queue.run_repeating(
+            self.check_config_reload,
+            interval=30,  # Cada 30 segundos
+            first=5  # Primera verificación a los 5 segundos de iniciar
+        )
+        logger.info("Verificación de recarga de configuración habilitada (cada 30 segundos)")
+
+        logger.info("Bot iniciado. Esperando mensajes...")
+        logger.info("="*60)
         self.app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
