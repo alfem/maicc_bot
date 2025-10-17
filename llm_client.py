@@ -1,7 +1,8 @@
 """
 Cliente para interactuar con la API de Google Gemini.
 """
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from typing import List, Dict, Optional
 from logger_config import get_logger
 
@@ -29,22 +30,12 @@ class LLMClient:
         logger.info(f"Inicializando LLMClient con modelo: {model}")
         logger.debug(f"Configuración - max_tokens: {max_tokens}, temperature: {temperature}")
 
-        # Configurar API key
-        genai.configure(api_key=api_key)
+        # Crear cliente con API key
+        self.client = genai.Client(api_key=api_key)
 
-        # Configurar generación
-        self.generation_config = {
-            "temperature": temperature,
-            "max_output_tokens": max_tokens,
-        }
-
-        # Crear modelo con system instruction
-        self.model = genai.GenerativeModel(
-            model_name=model,
-            generation_config=self.generation_config,
-            system_instruction=system_prompt if system_prompt else None
-        )
-
+        # Guardar configuración
+        self.temperature = temperature
+        self.max_tokens = max_tokens
         self.system_prompt = system_prompt
         self.base_model_name = model
         self.api_key = api_key
@@ -60,17 +51,12 @@ class LLMClient:
         """
         logger.debug("Actualizando system prompt con contexto adicional")
 
-        full_prompt = self.system_prompt
+        # Solo guardamos el contexto adicional para usarlo en get_response
         if additional_context:
-            full_prompt += "\n" + additional_context
+            self.current_additional_context = additional_context
             logger.debug(f"Contexto adicional agregado (longitud: {len(additional_context)} caracteres)")
-
-        # Recrear el modelo con el nuevo system instruction
-        self.model = genai.GenerativeModel(
-            model_name=self.base_model_name,
-            generation_config=self.generation_config,
-            system_instruction=full_prompt if full_prompt else None
-        )
+        else:
+            self.current_additional_context = ""
 
     def get_response(self, messages: List[Dict[str, str]], mood_context: str = "") -> str:
         """
@@ -91,29 +77,40 @@ class LLMClient:
                 logger.debug("Incluyendo contexto de mood en la solicitud")
                 self.update_system_prompt(mood_context)
 
+            # Preparar system instruction completo
+            system_instruction = self.system_prompt
+            if hasattr(self, 'current_additional_context') and self.current_additional_context:
+                system_instruction += "\n" + self.current_additional_context
+
             # Convertir formato de mensajes a formato Gemini
             # Gemini usa 'user' y 'model' en lugar de 'user' y 'assistant'
-            history = []
-            for msg in messages[:-1]:  # Todos menos el último
+            contents = []
+            for msg in messages:
                 role = "user" if msg["role"] == "user" else "model"
-                history.append({
-                    "role": role,
-                    "parts": [msg["content"]]
-                })
+                contents.append(types.Content(
+                    role=role,
+                    parts=[types.Part(text=msg["content"])]
+                ))
 
-            logger.debug(f"Historial convertido: {len(history)} mensajes")
+            logger.debug(f"Historial convertido: {len(contents)} mensajes")
 
-            # Crear chat con historial
-            chat = self.model.start_chat(history=history)
+            # Configurar la generación
+            config = types.GenerateContentConfig(
+                temperature=self.temperature,
+                max_output_tokens=self.max_tokens,
+                system_instruction=system_instruction if system_instruction else None
+            )
 
-            # Enviar el último mensaje
-            last_message = messages[-1]["content"] if messages else ""
-            logger.debug(f"Enviando mensaje al LLM: '{last_message[:50]}...'")
+            # Generar respuesta
+            response = self.client.models.generate_content(
+                model=self.base_model_name,
+                contents=contents,
+                config=config
+            )
 
-            response = chat.send_message(last_message)
-
-            logger.info(f"Respuesta recibida del LLM (longitud: {len(response.text)} caracteres)")
-            return response.text
+            response_text = response.text
+            logger.info(f"Respuesta recibida del LLM (longitud: {len(response_text)} caracteres)")
+            return response_text
 
         except Exception as e:
             logger.error(f"Error al comunicarse con la API de Gemini: {e}", exc_info=True)

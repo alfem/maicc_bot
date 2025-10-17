@@ -1,5 +1,5 @@
 python-telegram-bot[job-queue]==20.7
-google-generativeai==0.8.3
+google-genai
 flask==3.0.0
 python-dateutil==2.8.2
 feedparser==6.0.11
