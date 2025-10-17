@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración - Bot Compañero</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-content {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 24px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 15px;
+        }
+
+        .nav-link, .logout-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 5px;
+            text-decoration: none;
+            transition: background 0.3s;
+        }
+
+        .nav-link:hover, .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .settings-form {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-section {
+            margin-bottom: 30px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .form-section:last-child {
+            border-bottom: none;
+        }
+
+        .form-section h2 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            color: #333;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .help-text {
+            display: block;
+            color: #666;
+            font-size: 13px;
+            margin-top: 5px;
+        }
+
+        input[type="text"],
+        input[type="password"],
+        input[type="number"],
+        input[type="time"],
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        input[type="number"] {
+            width: 150px;
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+            font-family: monospace;
+        }
+
+        .textarea-large {
+            min-height: 200px;
+        }
+
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            cursor: pointer;
+        }
+
+        .inline-group {
+            display: flex;
+            gap: 20px;
+            align-items: flex-end;
+        }
+
+        .inline-group .form-group {
+            flex: 1;
+        }
+
+        .submit-btn {
+            background: #667eea;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .submit-btn:hover {
+            background: #5568d3;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 10px;
+            color: #856404;
+        }
+
+        .warning-box strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .reload-btn {
+            background: #28a745;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-left: 10px;
+        }
+
+        .reload-btn:hover {
+            background: #218838;
+        }
+
+        .reload-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .info-box {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 10px;
+            color: #0c5460;
+        }
+
+        .info-box strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1>⚙️ Configuración del Bot</h1>
+            <div class="nav-links">
+                <a href="/" class="nav-link">Usuarios</a>
+                <a href="/logout" class="logout-btn">Cerrar sesión</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        {% if success %}
+        <div class="alert alert-success">
+            ✅ Configuración guardada exitosamente.
+            {% if reload_pending %}
+            <div class="info-box" style="margin-top: 10px;">
+                <strong>🔄 Recarga automática programada</strong>
+                El bot aplicará los cambios automáticamente en 30 segundos o menos.
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if error %}
+        <div class="alert alert-error">
+            ❌ Error al guardar la configuración: {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="POST" class="settings-form">
+            <!-- LLM Configuration -->
+            <div class="form-section">
+                <h2>🤖 Configuración del LLM</h2>
+
+                <div class="form-group">
+                    <label for="system_prompt">System Prompt</label>
+                    <textarea id="system_prompt" name="system_prompt" class="textarea-large" required>{{ config.llm.system_prompt }}</textarea>
+                    <span class="help-text">Define la personalidad y comportamiento del asistente</span>
+                </div>
+
+                <div class="inline-group">
+                    <div class="form-group">
+                        <label for="temperature">Temperatura</label>
+                        <input type="number" id="temperature" name="temperature"
+                               value="{{ config.llm.temperature }}"
+                               min="0" max="2" step="0.1" required>
+                        <span class="help-text">Creatividad (0.0 - 2.0)</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="max_tokens">Max Tokens</label>
+                        <input type="number" id="max_tokens" name="max_tokens"
+                               value="{{ config.llm.max_tokens }}"
+                               min="256" max="32768" step="256" required>
+                        <span class="help-text">Longitud máxima de respuesta</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Proactive Messaging -->
+            <div class="form-section">
+                <h2>💬 Mensajes Proactivos</h2>
+
+                <div class="form-group">
+                    <label for="inactivity_minutes">Minutos de inactividad</label>
+                    <input type="number" id="inactivity_minutes" name="inactivity_minutes"
+                           value="{{ config.proactive.inactivity_minutes }}"
+                           min="5" max="1440" required>
+                    <span class="help-text">Tiempo antes de enviar un mensaje proactivo</span>
+                </div>
+
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="quiet_hours_enabled" name="quiet_hours_enabled"
+                               {% if config.proactive.quiet_hours.enabled %}checked{% endif %}>
+                        <label for="quiet_hours_enabled">Habilitar horario de no molestar</label>
+                    </div>
+                </div>
+
+                <div class="inline-group">
+                    <div class="form-group">
+                        <label for="quiet_hours_start">Inicio (hora de silencio)</label>
+                        <input type="time" id="quiet_hours_start" name="quiet_hours_start"
+                               value="{{ config.proactive.quiet_hours.start }}">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="quiet_hours_end">Fin (hora de silencio)</label>
+                        <input type="time" id="quiet_hours_end" name="quiet_hours_end"
+                               value="{{ config.proactive.quiet_hours.end }}">
+                    </div>
+                </div>
+            </div>
+
+            <!-- RSS Feeds -->
+            <div class="form-section">
+                <h2>📰 Fuentes RSS</h2>
+
+                <div class="form-group">
+                    <label for="rss_feeds">URLs de feeds RSS (una por línea)</label>
+                    <textarea id="rss_feeds" name="rss_feeds">{% for feed in config.news.rss_feeds %}{{ feed }}
+{% endfor %}</textarea>
+                    <span class="help-text">El bot usará estas noticias para iniciar conversaciones</span>
+                </div>
+            </div>
+
+            <!-- Admin Password -->
+            <div class="form-section">
+                <h2>🔐 Contraseña de Administrador</h2>
+
+                <div class="form-group">
+                    <label for="admin_password">Nueva contraseña (dejar vacío para no cambiar)</label>
+                    <input type="password" id="admin_password" name="admin_password"
+                           placeholder="Nueva contraseña">
+                    <span class="help-text">Contraseña para acceder a esta interfaz web</span>
+                </div>
+
+                <div class="warning-box">
+                    <strong>⚠️ Advertencia:</strong>
+                    Si cambias la contraseña, tendrás que volver a iniciar sesión con la nueva contraseña.
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 30px;">
+                <div class="button-group">
+                    <button type="submit" class="submit-btn">💾 Guardar Configuración</button>
+                    <button type="button" class="reload-btn" onclick="reloadConfig()" id="reloadBtn">
+                        🔄 Recargar Ahora
+                    </button>
+                </div>
+                <div class="info-box" style="margin-top: 15px; max-width: 600px; margin-left: auto; margin-right: auto;">
+                    <strong>ℹ️ Sobre la recarga</strong>
+                    Los cambios se aplican automáticamente cada 30 segundos. Usa "Recargar Ahora" para forzar una recarga inmediata sin esperar.
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        async function reloadConfig() {
+            const btn = document.getElementById('reloadBtn');
+            btn.disabled = true;
+            btn.textContent = '🔄 Recargando...';
+
+            try {
+                const response = await fetch('/reload', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                } else {
+                    alert('❌ ' + data.message);
+                }
+            } catch (error) {
+                alert('❌ Error al solicitar recarga: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔄 Recargar Ahora';
+            }
+        }
+    </script>
+</body>
+</html>
