@@ -6,10 +6,30 @@ from google.genai import types
 from typing import Optional
 from logger_config import get_logger
 import os
+import wave
 from datetime import datetime
 
 # Logger específico para TTS
 logger = get_logger('llm')  # Usamos el mismo logger que LLM
+
+
+def save_wave_file(filename: str, pcm_data: bytes, channels: int = 1,
+                   rate: int = 24000, sample_width: int = 2):
+    """
+    Guarda datos PCM en un archivo WAV con los headers correctos.
+
+    Args:
+        filename: Ruta del archivo a guardar
+        pcm_data: Datos de audio en formato PCM
+        channels: Número de canales (1 para mono, 2 para estéreo)
+        rate: Frecuencia de muestreo en Hz (default: 24000)
+        sample_width: Ancho de muestra en bytes (default: 2 para 16-bit)
+    """
+    with wave.open(filename, "wb") as wf:
+        wf.setnchannels(channels)
+        wf.setsampwidth(sample_width)
+        wf.setframerate(rate)
+        wf.writeframes(pcm_data)
 
 
 class TTSClient:
@@ -108,22 +128,14 @@ class TTSClient:
             # Guardar audio en disco si está habilitado
             if save_to_disk:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                # Determinar extensión basada en MIME type
-                extension = "wav"  # Por defecto
-                if mime_type == "audio/mp3":
-                    extension = "mp3"
-                elif mime_type == "audio/wav":
-                    extension = "wav"
-                elif mime_type == "audio/ogg":
-                    extension = "ogg"
-
-                filename = f"audio_{timestamp}_{self.speaker}.{extension}"
+                filename = f"audio_{timestamp}_{self.speaker}.wav"
                 filepath = os.path.join(self.audio_dir, filename)
 
-                with open(filepath, 'wb') as f:
-                    f.write(audio_data)
+                # Guardar como WAV con headers correctos
+                # Los datos vienen como PCM raw a 24kHz, mono, 16-bit
+                save_wave_file(filepath, audio_data, channels=1, rate=24000, sample_width=2)
 
-                logger.info(f"Audio guardado en: {filepath}")
+                logger.info(f"Audio guardado en formato WAV: {filepath}")
 
             return audio_data
 
@@ -150,3 +162,29 @@ class TTSClient:
         """
         logger.info(f"Actualizando preámbulo")
         self.preamble = preamble
+
+    def pcm_to_wav(self, pcm_data: bytes, channels: int = 1,
+                   rate: int = 24000, sample_width: int = 2) -> bytes:
+        """
+        Convierte datos PCM raw a formato WAV con headers.
+
+        Args:
+            pcm_data: Datos de audio en formato PCM
+            channels: Número de canales (1 para mono, 2 para estéreo)
+            rate: Frecuencia de muestreo en Hz (default: 24000)
+            sample_width: Ancho de muestra en bytes (default: 2 para 16-bit)
+
+        Returns:
+            Bytes del archivo WAV completo con headers
+        """
+        import io
+
+        wav_buffer = io.BytesIO()
+        with wave.open(wav_buffer, "wb") as wf:
+            wf.setnchannels(channels)
+            wf.setsampwidth(sample_width)
+            wf.setframerate(rate)
+            wf.writeframes(pcm_data)
+
+        wav_buffer.seek(0)
+        return wav_buffer.read()

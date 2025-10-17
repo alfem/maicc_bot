@@ -272,12 +272,15 @@ class CompanionBot:
         # Enviar respuesta al usuario (con o sin audio)
         if send_audio:
             logger.info(f"Generando audio de voz para usuario {user.id}")
-            audio_data = self.tts_client.generate_audio(assistant_response)
+            pcm_data = self.tts_client.generate_audio(assistant_response)
 
-            if audio_data:
+            if pcm_data:
+                # Convertir PCM a WAV con headers correctos
+                wav_data = self.tts_client.pcm_to_wav(pcm_data)
+
                 # Enviar audio
-                await update.message.reply_voice(voice=audio_data)
-                logger.info(f"Audio enviado a usuario {user.id} (tamaño: {len(audio_data)} bytes)")
+                await update.message.reply_voice(voice=wav_data)
+                logger.info(f"Audio WAV enviado a usuario {user.id} (tamaño PCM: {len(pcm_data)} bytes, WAV: {len(wav_data)} bytes)")
             else:
                 # Si falla la generación de audio, enviar texto
                 logger.warning(f"Error al generar audio para usuario {user.id}, enviando texto")
@@ -403,11 +406,14 @@ class CompanionBot:
                     # Enviar mensaje proactivo al usuario (con o sin audio)
                     if send_audio:
                         logger.info(f"Generando audio de voz para mensaje proactivo a usuario {user_id}")
-                        audio_data = self.tts_client.generate_audio(assistant_response)
+                        pcm_data = self.tts_client.generate_audio(assistant_response)
 
-                        if audio_data:
-                            await context.bot.send_voice(chat_id=user_id, voice=audio_data)
-                            logger.info(f"Audio proactivo enviado a usuario {user_id} (tamaño: {len(audio_data)} bytes)")
+                        if pcm_data:
+                            # Convertir PCM a WAV con headers correctos
+                            wav_data = self.tts_client.pcm_to_wav(pcm_data)
+
+                            await context.bot.send_voice(chat_id=user_id, voice=wav_data)
+                            logger.info(f"Audio WAV proactivo enviado a usuario {user_id} (tamaño PCM: {len(pcm_data)} bytes, WAV: {len(wav_data)} bytes)")
                         else:
                             logger.warning(f"Error al generar audio proactivo para usuario {user_id}, enviando texto")
                             await context.bot.send_message(chat_id=user_id, text=assistant_response)
