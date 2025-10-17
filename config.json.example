@@ -42,7 +42,8 @@
     "model": "gemini-2.5-flash-preview-tts",
     "speaker": "Puck",
     "preamble": "Habla de forma natural y expresiva: ",
-    "frequency_percent": 30
+    "frequency_percent": 30,
+    "audio_dir": "./audio_outputs"
   },
   "web": {
     "host": "0.0.0.0",

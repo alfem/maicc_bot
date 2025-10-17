@@ -86,10 +86,11 @@ class CompanionBot:
                 api_key=self.config["llm"]["api_key"],
                 model=tts_config.get("model", self.config["llm"]["model"]),
                 speaker=tts_config.get("speaker", "Puck"),
-                preamble=tts_config.get("preamble", "")
+                preamble=tts_config.get("preamble", ""),
+                audio_dir=tts_config.get("audio_dir", "./audio_outputs")
             )
             self.tts_frequency = tts_config.get("frequency_percent", 30)
-            logger.info(f"Cliente TTS inicializado (speaker: {tts_config.get('speaker', 'Puck')}, frecuencia: {self.tts_frequency}%)")
+            logger.info(f"Cliente TTS inicializado (speaker: {tts_config.get('speaker', 'Puck')}, frecuencia: {self.tts_frequency}%, audio_dir: {tts_config.get('audio_dir', './audio_outputs')})")
         else:
             self.tts_client = None
             self.tts_frequency = 0
