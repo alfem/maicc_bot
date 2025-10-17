@@ -1,10 +1,10 @@
 """
 Cliente para generación de voz usando la API de Google Gemini.
 """
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from typing import Optional
 from logger_config import get_logger
-import io
 
 # Logger específico para TTS
 logger = get_logger('llm')  # Usamos el mismo logger que LLM
@@ -20,21 +20,18 @@ class TTSClient:
 
         Args:
             api_key: Clave de API de Google Gemini
-            model: Nombre del modelo a usar (ej: gemini-2.0-flash-exp)
+            model: Nombre del modelo a usar (ej: gemini-2.5-flash-preview-tts)
             speaker: Nombre del speaker/voz a usar (Puck, Charon, Kore, Fenrir, Aoede)
             preamble: Texto para añadir antes del contenido a convertir
         """
         logger.info(f"Inicializando TTSClient con modelo: {model}, speaker: {speaker}")
 
-        # Configurar API key
-        genai.configure(api_key=api_key)
+        # Configurar cliente con API key
+        self.client = genai.Client(api_key=api_key)
 
         self.model_name = model
         self.speaker = speaker
         self.preamble = preamble
-
-        # Crear modelo
-        self.model = genai.GenerativeModel(model_name=model)
 
         logger.info("TTSClient inicializado correctamente")
 
@@ -55,14 +52,15 @@ class TTSClient:
             full_text = self.preamble + text if self.preamble else text
             logger.debug(f"Texto completo para TTS: '{full_text[:100]}...'")
 
-            # Generar el contenido con speech
-            response = self.model.generate_content(
-                full_text,
-                generation_config=genai.GenerationConfig(
+            # Generar el contenido con speech usando la nueva API
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=full_text,
+                config=types.GenerateContentConfig(
                     response_modalities=["AUDIO"],
-                    speech_config=genai.SpeechConfig(
-                        voice_config=genai.VoiceConfig(
-                            prebuilt_voice_config=genai.PrebuiltVoiceConfig(
+                    speech_config=types.SpeechConfig(
+                        voice_config=types.VoiceConfig(
+                            prebuilt_voice_config=types.PrebuiltVoiceConfig(
                                 voice_name=self.speaker
                             )
                         )
@@ -76,11 +74,7 @@ class TTSClient:
                 return None
 
             # Obtener el audio de la respuesta
-            audio_data = None
-            for part in response.candidates[0].content.parts:
-                if hasattr(part, 'inline_data') and part.inline_data:
-                    audio_data = part.inline_data.data
-                    break
+            audio_data = response.candidates[0].content.parts[0].inline_data.data
 
             if not audio_data:
                 logger.warning("No se encontró audio en la respuesta")

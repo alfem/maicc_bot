@@ -195,6 +195,17 @@ def settings():
             else:
                 current_config['news']['rss_feeds'] = []
 
+            # TTS Configuration
+            if 'tts' not in current_config:
+                current_config['tts'] = {}
+
+            tts_enabled = request.form.get('tts_enabled') == 'on'
+            current_config['tts']['enabled'] = tts_enabled
+            current_config['tts']['model'] = request.form.get('tts_model', 'gemini-2.5-flash-preview-tts').strip()
+            current_config['tts']['speaker'] = request.form.get('tts_speaker', 'Puck').strip()
+            current_config['tts']['preamble'] = request.form.get('tts_preamble', '').strip()
+            current_config['tts']['frequency_percent'] = int(request.form.get('tts_frequency', 30))
+
             # Admin password
             new_password = request.form.get('admin_password', '').strip()
             if new_password:
@@ -227,6 +238,17 @@ def settings():
 
     # GET - mostrar formulario
     logger.debug(f"Acceso a configuración desde {client_ip}")
+
+    # Asegurar que existe la configuración TTS con valores por defecto
+    if 'tts' not in config:
+        config['tts'] = {
+            'enabled': False,
+            'model': 'gemini-2.5-flash-preview-tts',
+            'speaker': 'Puck',
+            'preamble': 'Habla de forma natural y expresiva: ',
+            'frequency_percent': 30
+        }
+
     return render_template('settings.html', config=config)
 
 

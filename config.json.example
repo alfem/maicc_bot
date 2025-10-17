@@ -39,7 +39,7 @@
   },
   "tts": {
     "enabled": false,
-    "model": "gemini-2.0-flash-exp",
+    "model": "gemini-2.5-flash-preview-tts",
     "speaker": "Puck",
     "preamble": "Habla de forma natural y expresiva: ",
     "frequency_percent": 30
