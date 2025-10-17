@@ -13,6 +13,7 @@ from conversation_manager import ConversationManager
 from llm_client import LLMClient
 from news_manager import NewsManager
 from mood_manager import MoodManager
+from tts_client import TTSClient
 from logger_config import setup_logging, get_logger
 from config_reloader import ConfigReloader
 
@@ -77,6 +78,22 @@ class CompanionBot:
         location = mood_config.get("location", "Madrid,ES")
         self.mood_manager = MoodManager(weather_api_key, location)
         logger.info(f"Gestor de estado de ánimo inicializado (ubicación: {location})")
+
+        # Inicializar cliente TTS si está habilitado
+        tts_config = self.config.get("tts", {})
+        if tts_config.get("enabled", False):
+            self.tts_client = TTSClient(
+                api_key=self.config["llm"]["api_key"],
+                model=tts_config.get("model", self.config["llm"]["model"]),
+                speaker=tts_config.get("speaker", "Puck"),
+                preamble=tts_config.get("preamble", "")
+            )
+            self.tts_frequency = tts_config.get("frequency_percent", 30)
+            logger.info(f"Cliente TTS inicializado (speaker: {tts_config.get('speaker', 'Puck')}, frecuencia: {self.tts_frequency}%)")
+        else:
+            self.tts_client = None
+            self.tts_frequency = 0
+            logger.info("Cliente TTS deshabilitado")
 
         # Crear aplicación de Telegram
         self.app = Application.builder().token(
@@ -243,10 +260,32 @@ class CompanionBot:
             mood_info=current_mood
         )
 
-        # Enviar respuesta al usuario
-        await update.message.reply_text(assistant_response)
+        # Decidir si enviar con voz según la frecuencia configurada
+        send_audio = False
+        if self.tts_client and self.tts_frequency > 0:
+            # Generar número aleatorio entre 0 y 100
+            random_value = random.randint(0, 100)
+            send_audio = random_value < self.tts_frequency
+            logger.debug(f"Decisión de audio: {random_value} < {self.tts_frequency} = {send_audio}")
 
-        logger.info(f"Respuesta enviada a usuario {user.id} (longitud: {len(assistant_response)} caracteres)")
+        # Enviar respuesta al usuario (con o sin audio)
+        if send_audio:
+            logger.info(f"Generando audio de voz para usuario {user.id}")
+            audio_data = self.tts_client.generate_audio(assistant_response)
+
+            if audio_data:
+                # Enviar audio
+                await update.message.reply_voice(voice=audio_data)
+                logger.info(f"Audio enviado a usuario {user.id} (tamaño: {len(audio_data)} bytes)")
+            else:
+                # Si falla la generación de audio, enviar texto
+                logger.warning(f"Error al generar audio para usuario {user.id}, enviando texto")
+                await update.message.reply_text(assistant_response)
+        else:
+            # Enviar solo texto
+            await update.message.reply_text(assistant_response)
+
+        logger.info(f"Respuesta enviada a usuario {user.id} (longitud: {len(assistant_response)} caracteres, audio: {send_audio})")
 
     async def send_proactive_message(self, context: ContextTypes.DEFAULT_TYPE):
         """
@@ -353,13 +392,31 @@ class CompanionBot:
                         mood_info=current_mood
                     )
 
-                    # Enviar mensaje al usuario
-                    await context.bot.send_message(chat_id=user_id, text=assistant_response)
+                    # Decidir si enviar con voz según la frecuencia configurada
+                    send_audio = False
+                    if self.tts_client and self.tts_frequency > 0:
+                        random_value = random.randint(0, 100)
+                        send_audio = random_value < self.tts_frequency
+                        logger.debug(f"Decisión de audio (proactivo): {random_value} < {self.tts_frequency} = {send_audio}")
+
+                    # Enviar mensaje proactivo al usuario (con o sin audio)
+                    if send_audio:
+                        logger.info(f"Generando audio de voz para mensaje proactivo a usuario {user_id}")
+                        audio_data = self.tts_client.generate_audio(assistant_response)
+
+                        if audio_data:
+                            await context.bot.send_voice(chat_id=user_id, voice=audio_data)
+                            logger.info(f"Audio proactivo enviado a usuario {user_id} (tamaño: {len(audio_data)} bytes)")
+                        else:
+                            logger.warning(f"Error al generar audio proactivo para usuario {user_id}, enviando texto")
+                            await context.bot.send_message(chat_id=user_id, text=assistant_response)
+                    else:
+                        await context.bot.send_message(chat_id=user_id, text=assistant_response)
 
                     # Actualizar última actividad (para no enviar otro mensaje inmediatamente)
                     self.user_last_activity[user_id] = datetime.now()
 
-                    logger.info(f"Mensaje proactivo enviado exitosamente a usuario {user_id}")
+                    logger.info(f"Mensaje proactivo enviado exitosamente a usuario {user_id} (audio: {send_audio})")
 
                 except Exception as e:
                     logger.error(f"Error al enviar mensaje proactivo a usuario {user_id}: {e}", exc_info=True)

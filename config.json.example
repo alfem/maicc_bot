@@ -1,0 +1,72 @@
+{
+  "telegram": {
+    "bot_token": "TU_TOKEN_DE_TELEGRAM_AQUI",
+    "allowed_users": []
+  },
+  "llm": {
+    "api_url": "",
+    "api_key": "TU_API_KEY_DE_GEMINI_AQUI",
+    "model": "gemini-2.0-flash-exp",
+    "max_tokens": 8192,
+    "temperature": 0.7,
+    "system_prompt": "Eres un compañero amigable y empático para personas mayores. Tu objetivo es mantener conversaciones naturales, escuchar con atención, mostrar interés genuino y proporcionar compañía. Habla de manera cálida y cercana, usando un lenguaje sencillo y claro. Puedes compartir anécdotas, hacer preguntas sobre sus experiencias, y mostrar empatía. Evita ser demasiado técnico o formal. Sé paciente, considerado y positivo."
+  },
+  "storage": {
+    "conversations_dir": "./conversations",
+    "max_context_messages": 20
+  },
+  "proactive": {
+    "enabled": true,
+    "inactivity_minutes": 60,
+    "check_interval_minutes": 15,
+    "quiet_hours": {
+      "enabled": true,
+      "start": "22:00",
+      "end": "09:00"
+    }
+  },
+  "news": {
+    "rss_feeds": [
+      "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada",
+      "https://www.elmundo.es/rss/portada.xml",
+      "https://www.bbc.com/mundo/topics/cyx5krnw38vt/rss.xml"
+    ],
+    "cache_file": "./news_cache.json"
+  },
+  "mood": {
+    "weather_api_key": "TU_API_KEY_DE_OPENWEATHERMAP_AQUI",
+    "location": "Madrid,ES"
+  },
+  "tts": {
+    "enabled": false,
+    "model": "gemini-2.0-flash-exp",
+    "speaker": "Puck",
+    "preamble": "Habla de forma natural y expresiva: ",
+    "frequency_percent": 30
+  },
+  "web": {
+    "host": "0.0.0.0",
+    "port": 8080,
+    "admin_password": "cambiar_password_seguro"
+  },
+  "logging": {
+    "log_dir": "./logs",
+    "level": "INFO",
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    "date_format": "%Y-%m-%d %H:%M:%S",
+    "loggers": {
+      "telegram": {
+        "filename_prefix": "telegram",
+        "level": "INFO"
+      },
+      "llm": {
+        "filename_prefix": "llm",
+        "level": "INFO"
+      },
+      "web": {
+        "filename_prefix": "web",
+        "level": "INFO"
+      }
+    }
+  }
+}
