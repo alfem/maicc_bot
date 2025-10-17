@@ -402,13 +402,36 @@
                 <div class="form-group">
                     <label for="tts_speaker">Voz (Speaker)</label>
                     <select id="tts_speaker" name="tts_speaker">
-                        <option value="Puck" {% if config.tts.speaker == 'Puck' %}selected{% endif %}>Puck (Recomendado para español)</option>
-                        <option value="Charon" {% if config.tts.speaker == 'Charon' %}selected{% endif %}>Charon</option>
-                        <option value="Kore" {% if config.tts.speaker == 'Kore' %}selected{% endif %}>Kore</option>
-                        <option value="Fenrir" {% if config.tts.speaker == 'Fenrir' %}selected{% endif %}>Fenrir</option>
-                        <option value="Aoede" {% if config.tts.speaker == 'Aoede' %}selected{% endif %}>Aoede</option>
+                        <option value="Leda" {% if config.tts.speaker == 'Leda' %}selected{% endif %}>Leda - Juvenil (Por defecto)</option>
+                        <option value="Puck" {% if config.tts.speaker == 'Puck' %}selected{% endif %}>Puck - Optimista</option>
+                        <option value="Charon" {% if config.tts.speaker == 'Charon' %}selected{% endif %}>Charon - Informativa</option>
+                        <option value="Kore" {% if config.tts.speaker == 'Kore' %}selected{% endif %}>Kore - Firme</option>
+                        <option value="Fenrir" {% if config.tts.speaker == 'Fenrir' %}selected{% endif %}>Fenrir - Excitable</option>
+                        <option value="Aoede" {% if config.tts.speaker == 'Aoede' %}selected{% endif %}>Aoede - Breezy</option>
+                        <option value="Zephyr" {% if config.tts.speaker == 'Zephyr' %}selected{% endif %}>Zephyr - Brillante</option>
+                        <option value="Orus" {% if config.tts.speaker == 'Orus' %}selected{% endif %}>Orus - Firme</option>
+                        <option value="Callirrhoe" {% if config.tts.speaker == 'Callirrhoe' %}selected{% endif %}>Callirrhoe - Tranquila</option>
+                        <option value="Autonoe" {% if config.tts.speaker == 'Autonoe' %}selected{% endif %}>Autonoe - Brillante</option>
+                        <option value="Enceladus" {% if config.tts.speaker == 'Enceladus' %}selected{% endif %}>Enceladus - Respiración</option>
+                        <option value="Iapetus" {% if config.tts.speaker == 'Iapetus' %}selected{% endif %}>Iapetus - Clara</option>
+                        <option value="Umbriel" {% if config.tts.speaker == 'Umbriel' %}selected{% endif %}>Umbriel - Relajada</option>
+                        <option value="Algieba" {% if config.tts.speaker == 'Algieba' %}selected{% endif %}>Algieba - Suave</option>
+                        <option value="Despina" {% if config.tts.speaker == 'Despina' %}selected{% endif %}>Despina - Suave</option>
+                        <option value="Erinome" {% if config.tts.speaker == 'Erinome' %}selected{% endif %}>Erinome - Despejada</option>
+                        <option value="Algenib" {% if config.tts.speaker == 'Algenib' %}selected{% endif %}>Algenib - Arenosa</option>
+                        <option value="Rasalgethi" {% if config.tts.speaker == 'Rasalgethi' %}selected{% endif %}>Rasalgethi - Informativa</option>
+                        <option value="Laomedeia" {% if config.tts.speaker == 'Laomedeia' %}selected{% endif %}>Laomedeia - Optimista</option>
+                        <option value="Achernar" {% if config.tts.speaker == 'Achernar' %}selected{% endif %}>Achernar - Suave</option>
+                        <option value="Alnilam" {% if config.tts.speaker == 'Alnilam' %}selected{% endif %}>Alnilam - Firme</option>
+                        <option value="Schedar" {% if config.tts.speaker == 'Schedar' %}selected{% endif %}>Schedar - Par</option>
+                        <option value="Gacrux" {% if config.tts.speaker == 'Gacrux' %}selected{% endif %}>Gacrux - Madura</option>
+                        <option value="Pulcherrima" {% if config.tts.speaker == 'Pulcherrima' %}selected{% endif %}>Pulcherrima - Forward</option>
+                        <option value="Achird" {% if config.tts.speaker == 'Achird' %}selected{% endif %}>Achird - Amistosa</option>
+                        <option value="Zubenelgenubi" {% if config.tts.speaker == 'Zubenelgenubi' %}selected{% endif %}>Zubenelgenubi - Casual</option>
+                        <option value="Vindemiatrix" {% if config.tts.speaker == 'Vindemiatrix' %}selected{% endif %}>Vindemiatrix - Suave</option>
+                        <option value="Sadachbia" {% if config.tts.speaker == 'Sadachbia' %}selected{% endif %}>Sadachbia - Animada</option>
                     </select>
-                    <span class="help-text">Selecciona la voz que usará el bot</span>
+                    <span class="help-text">Selecciona la voz que usará el bot (30 voces disponibles)</span>
                 </div>
 
                 <div class="form-group">
@@ -419,12 +442,22 @@
                     <span class="help-text">Texto que se añade antes del contenido para guiar el estilo de voz</span>
                 </div>
 
-                <div class="form-group">
-                    <label for="tts_frequency">Frecuencia de mensajes de voz (%)</label>
-                    <input type="number" id="tts_frequency" name="tts_frequency"
-                           value="{{ config.tts.frequency_percent }}"
-                           min="0" max="100" step="5">
-                    <span class="help-text">Porcentaje de mensajes que se enviarán como voz (0 = nunca, 100 = siempre)</span>
+                <div class="inline-group">
+                    <div class="form-group">
+                        <label for="tts_temperature">Temperatura</label>
+                        <input type="number" id="tts_temperature" name="tts_temperature"
+                               value="{{ config.tts.temperature if config.tts.temperature is defined else 0.5 }}"
+                               min="0" max="1" step="0.1">
+                        <span class="help-text">Control de variación (0.0 - 1.0)</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tts_frequency">Frecuencia de mensajes de voz (%)</label>
+                        <input type="number" id="tts_frequency" name="tts_frequency"
+                               value="{{ config.tts.frequency_percent }}"
+                               min="0" max="100" step="5">
+                        <span class="help-text">Porcentaje de mensajes que se enviarán como voz (0 = nunca, 100 = siempre)</span>
+                    </div>
                 </div>
 
                 <div class="info-box">

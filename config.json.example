@@ -40,8 +40,9 @@
   "tts": {
     "enabled": false,
     "model": "gemini-2.5-flash-preview-tts",
-    "speaker": "Puck",
+    "speaker": "Leda",
     "preamble": "Habla de forma natural y expresiva: ",
+    "temperature": 0.5,
     "frequency_percent": 30,
     "audio_dir": "./audio_outputs"
   },

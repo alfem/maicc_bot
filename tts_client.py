@@ -35,19 +35,21 @@ def save_wave_file(filename: str, pcm_data: bytes, channels: int = 1,
 class TTSClient:
     """Cliente para generar audio de voz usando Google Gemini."""
 
-    def __init__(self, api_key: str, model: str, speaker: str = "Puck",
-                 preamble: str = "", audio_dir: str = "./audio_outputs"):
+    def __init__(self, api_key: str, model: str, speaker: str = "Leda",
+                 preamble: str = "", temperature: float = 0.5,
+                 audio_dir: str = "./audio_outputs"):
         """
         Inicializa el cliente de Text-to-Speech.
 
         Args:
             api_key: Clave de API de Google Gemini
             model: Nombre del modelo a usar (ej: gemini-2.5-flash-preview-tts)
-            speaker: Nombre del speaker/voz a usar (Puck, Charon, Kore, Fenrir, Aoede)
+            speaker: Nombre del speaker/voz a usar (30 voces disponibles)
             preamble: Texto para añadir antes del contenido a convertir
+            temperature: Temperatura para control de variación (0.0-1.0, default: 0.5)
             audio_dir: Directorio donde guardar los audios generados
         """
-        logger.info(f"Inicializando TTSClient con modelo: {model}, speaker: {speaker}")
+        logger.info(f"Inicializando TTSClient con modelo: {model}, speaker: {speaker}, temperature: {temperature}")
 
         # Configurar cliente con API key
         self.client = genai.Client(api_key=api_key)
@@ -55,6 +57,7 @@ class TTSClient:
         self.model_name = model
         self.speaker = speaker
         self.preamble = preamble
+        self.temperature = temperature
         self.audio_dir = audio_dir
 
         # Crear directorio de audios si no existe
@@ -87,6 +90,7 @@ class TTSClient:
                 model=self.model_name,
                 contents=full_text,
                 config=types.GenerateContentConfig(
+                    temperature=self.temperature,
                     response_modalities=["AUDIO"],
                     speech_config=types.SpeechConfig(
                         voice_config=types.VoiceConfig(
