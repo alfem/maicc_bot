@@ -110,6 +110,39 @@ class ConfigReloader:
                 bot_instance.mood_manager = MoodManager(weather_api_key, location)
                 logger.info(f"Gestor de mood actualizado (ubicación: {location})")
 
+            # Actualizar cliente TTS si cambió o se habilitó/deshabilitó
+            tts_config = new_config.get("tts", {})
+            old_tts_config = old_config.get("tts", {})
+
+            # Verificar si cambió algún parámetro de TTS
+            tts_changed = (
+                tts_config.get("enabled") != old_tts_config.get("enabled") or
+                tts_config.get("model") != old_tts_config.get("model") or
+                tts_config.get("speaker") != old_tts_config.get("speaker") or
+                tts_config.get("preamble") != old_tts_config.get("preamble") or
+                tts_config.get("temperature") != old_tts_config.get("temperature") or
+                tts_config.get("frequency_percent") != old_tts_config.get("frequency_percent")
+            )
+
+            if tts_changed:
+                logger.info("Detectados cambios en configuración de TTS")
+                if tts_config.get("enabled", False):
+                    from tts_client import TTSClient
+                    bot_instance.tts_client = TTSClient(
+                        api_key=new_config["llm"]["api_key"],
+                        model=tts_config.get("model", new_config["llm"]["model"]),
+                        speaker=tts_config.get("speaker", "Leda"),
+                        preamble=tts_config.get("preamble", ""),
+                        temperature=tts_config.get("temperature", 0.5),
+                        audio_dir=tts_config.get("audio_dir", "./audio_outputs")
+                    )
+                    bot_instance.tts_frequency = tts_config.get("frequency_percent", 30)
+                    logger.info(f"Cliente TTS reconstruido (speaker: {tts_config.get('speaker', 'Leda')}, temperature: {tts_config.get('temperature', 0.5)}, frecuencia: {bot_instance.tts_frequency}%)")
+                else:
+                    bot_instance.tts_client = None
+                    bot_instance.tts_frequency = 0
+                    logger.info("Cliente TTS deshabilitado")
+
             self.last_reload = datetime.now()
 
             logger.info("="*60)
@@ -157,6 +190,31 @@ class ConfigReloader:
         new_rss = new_config.get("news", {}).get("rss_feeds", [])
         if old_rss != new_rss:
             changes.append(f"  - Feeds RSS: {len(old_rss)} → {len(new_rss)}")
+
+        # Cambios en TTS
+        old_tts = old_config.get("tts", {})
+        new_tts = new_config.get("tts", {})
+
+        if old_tts.get("enabled") != new_tts.get("enabled"):
+            changes.append(f"  - TTS habilitado: {old_tts.get('enabled', False)} → {new_tts.get('enabled', False)}")
+
+        if new_tts.get("enabled", False):
+            if old_tts.get("model") != new_tts.get("model"):
+                changes.append(f"  - TTS Modelo: {old_tts.get('model', 'N/A')} → {new_tts.get('model', 'N/A')}")
+
+            if old_tts.get("speaker") != new_tts.get("speaker"):
+                changes.append(f"  - TTS Speaker: {old_tts.get('speaker', 'N/A')} → {new_tts.get('speaker', 'N/A')}")
+
+            if old_tts.get("preamble") != new_tts.get("preamble"):
+                old_preamble = old_tts.get("preamble", "")
+                new_preamble = new_tts.get("preamble", "")
+                changes.append(f"  - TTS Preámbulo: '{old_preamble[:30]}...' → '{new_preamble[:30]}...'")
+
+            if old_tts.get("temperature") != new_tts.get("temperature"):
+                changes.append(f"  - TTS Temperatura: {old_tts.get('temperature', 'N/A')} → {new_tts.get('temperature', 'N/A')}")
+
+            if old_tts.get("frequency_percent") != new_tts.get("frequency_percent"):
+                changes.append(f"  - TTS Frecuencia: {old_tts.get('frequency_percent', 'N/A')}% → {new_tts.get('frequency_percent', 'N/A')}%")
 
         if changes:
             logger.info("Cambios detectados:")

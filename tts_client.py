@@ -79,11 +79,26 @@ class TTSClient:
             Bytes del archivo de audio en formato WAV, o None si hay error
         """
         try:
-            logger.info(f"Generando audio de voz (longitud texto: {len(text)} caracteres)")
+            logger.info("="*80)
+            logger.info("GENERACIÓN DE VOZ TTS - INICIO")
+            logger.info("="*80)
+
+            # Registrar todos los parámetros de generación
+            logger.info(f"Parámetros de generación de voz:")
+            logger.info(f"  - Modelo: {self.model_name}")
+            logger.info(f"  - Speaker/Voz: {self.speaker}")
+            logger.info(f"  - Temperature: {self.temperature}")
+            logger.info(f"  - Preámbulo: '{self.preamble}'")
+            logger.info(f"  - Longitud del texto original: {len(text)} caracteres")
 
             # Preparar el texto con el preámbulo
             full_text = self.preamble + text if self.preamble else text
-            logger.debug(f"Texto completo para TTS: '{full_text[:100]}...'")
+            logger.info(f"  - Longitud del texto completo (con preámbulo): {len(full_text)} caracteres")
+            logger.info(f"Texto original: '{text[:200]}{'...' if len(text) > 200 else ''}'")
+            if self.preamble:
+                logger.info(f"Texto completo (con preámbulo): '{full_text[:200]}{'...' if len(full_text) > 200 else ''}'")
+
+            logger.info("Llamando a la API de Gemini para generar audio...")
 
             # Generar el contenido con speech usando la nueva API
             response = self.client.models.generate_content(
@@ -125,9 +140,11 @@ class TTSClient:
 
             if not audio_data:
                 logger.warning("No se encontró audio en la respuesta")
+                logger.info("="*80)
                 return None
 
-            logger.info(f"Audio generado exitosamente (tamaño: {len(audio_data)} bytes)")
+            logger.info(f"✅ Audio generado exitosamente")
+            logger.info(f"  - Tamaño del audio: {len(audio_data)} bytes")
 
             # Guardar audio en disco si está habilitado
             if save_to_disk:
@@ -139,12 +156,20 @@ class TTSClient:
                 # Los datos vienen como PCM raw a 24kHz, mono, 16-bit
                 save_wave_file(filepath, audio_data, channels=1, rate=24000, sample_width=2)
 
-                logger.info(f"Audio guardado en formato WAV: {filepath}")
+                logger.info(f"  - Audio guardado en: {filepath}")
+
+            logger.info("="*80)
+            logger.info("GENERACIÓN DE VOZ TTS - FIN EXITOSO")
+            logger.info("="*80)
 
             return audio_data
 
         except Exception as e:
+            logger.error("="*80)
+            logger.error("GENERACIÓN DE VOZ TTS - ERROR")
+            logger.error("="*80)
             logger.error(f"Error al generar audio con la API de Gemini: {e}", exc_info=True)
+            logger.error("="*80)
             return None
 
     def update_speaker(self, speaker: str):
@@ -154,7 +179,7 @@ class TTSClient:
         Args:
             speaker: Nombre del nuevo speaker
         """
-        logger.info(f"Actualizando speaker de '{self.speaker}' a '{speaker}'")
+        logger.info(f"🔄 Actualizando speaker de '{self.speaker}' a '{speaker}'")
         self.speaker = speaker
 
     def update_preamble(self, preamble: str):
@@ -164,8 +189,18 @@ class TTSClient:
         Args:
             preamble: Nuevo texto de preámbulo
         """
-        logger.info(f"Actualizando preámbulo")
+        logger.info(f"🔄 Actualizando preámbulo de '{self.preamble}' a '{preamble}'")
         self.preamble = preamble
+
+    def update_temperature(self, temperature: float):
+        """
+        Actualiza la temperatura de generación.
+
+        Args:
+            temperature: Nueva temperatura (0.0-1.0)
+        """
+        logger.info(f"🔄 Actualizando temperatura de {self.temperature} a {temperature}")
+        self.temperature = temperature
 
     def pcm_to_wav(self, pcm_data: bytes, channels: int = 1,
                    rate: int = 24000, sample_width: int = 2) -> bytes:
