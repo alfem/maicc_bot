@@ -86,6 +86,11 @@ class ConfigReloader:
                 api_url=new_config["llm"]["api_url"]
             )
             logger.info("Cliente LLM reconstruido con nueva configuración")
+            logger.info(f"  - Modelo: {new_config['llm']['model']}")
+            logger.info(f"  - Temperature: {new_config['llm']['temperature']}")
+            logger.info(f"  - Max tokens: {new_config['llm']['max_tokens']}")
+            logger.info(f"  - System prompt (longitud): {len(new_config['llm']['system_prompt'])} caracteres")
+            logger.debug(f"  - System prompt (primeros 200 caracteres): '{new_config['llm']['system_prompt'][:200]}...'")
 
             # Actualizar gestor de noticias si cambió
             rss_feeds = new_config.get("news", {}).get("rss_feeds", [])
@@ -166,14 +171,22 @@ class ConfigReloader:
         changes = []
 
         # Cambios en LLM
+        if old_config["llm"].get("model") != new_config["llm"].get("model"):
+            changes.append(f"  - Modelo LLM: {old_config['llm'].get('model')} → {new_config['llm'].get('model')}")
+
         if old_config["llm"]["temperature"] != new_config["llm"]["temperature"]:
-            changes.append(f"  - Temperatura: {old_config['llm']['temperature']} → {new_config['llm']['temperature']}")
+            changes.append(f"  - Temperatura LLM: {old_config['llm']['temperature']} → {new_config['llm']['temperature']}")
 
         if old_config["llm"]["max_tokens"] != new_config["llm"]["max_tokens"]:
             changes.append(f"  - Max tokens: {old_config['llm']['max_tokens']} → {new_config['llm']['max_tokens']}")
 
         if old_config["llm"]["system_prompt"] != new_config["llm"]["system_prompt"]:
-            changes.append(f"  - System prompt modificado (longitud: {len(old_config['llm']['system_prompt'])} → {len(new_config['llm']['system_prompt'])} caracteres)")
+            old_prompt_preview = old_config['llm']['system_prompt'][:100].replace('\n', ' ')
+            new_prompt_preview = new_config['llm']['system_prompt'][:100].replace('\n', ' ')
+            changes.append(f"  - System prompt modificado:")
+            changes.append(f"    * Longitud: {len(old_config['llm']['system_prompt'])} → {len(new_config['llm']['system_prompt'])} caracteres")
+            changes.append(f"    * Anterior: '{old_prompt_preview}...'")
+            changes.append(f"    * Nuevo: '{new_prompt_preview}...'")
 
         # Cambios en proactive
         if old_config["proactive"]["inactivity_minutes"] != new_config["proactive"]["inactivity_minutes"]:

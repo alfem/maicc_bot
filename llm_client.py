@@ -82,6 +82,12 @@ class LLMClient:
             if hasattr(self, 'current_additional_context') and self.current_additional_context:
                 system_instruction += "\n" + self.current_additional_context
 
+            # Log del system prompt utilizado
+            logger.debug(f"System prompt base (longitud: {len(self.system_prompt)} caracteres): '{self.system_prompt[:150]}...'")
+            if hasattr(self, 'current_additional_context') and self.current_additional_context:
+                logger.debug(f"Contexto adicional (longitud: {len(self.current_additional_context)} caracteres): '{self.current_additional_context[:150]}...'")
+            logger.debug(f"System instruction completo (longitud: {len(system_instruction) if system_instruction else 0} caracteres)")
+
             # Convertir formato de mensajes a formato Gemini
             # Gemini usa 'user' y 'model' en lugar de 'user' y 'assistant'
             contents = []
