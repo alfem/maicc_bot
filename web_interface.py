@@ -303,6 +303,69 @@ def api_delete_multiple_memories(user_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route('/api/user/<int:user_id>/messages/reprocess', methods=['POST'])
+@login_required
+def api_reprocess_messages(user_id):
+    """API para reprocesar mensajes seleccionados en mem0."""
+    client_ip = request.remote_addr
+    logger.info(f"API POST /api/user/{user_id}/messages/reprocess llamada desde {client_ip}")
+
+    if not mem0_enabled:
+        return jsonify({"success": False, "error": "mem0 no está habilitado"}), 400
+
+    try:
+        data = request.get_json()
+        message_indices = data.get('message_indices', [])
+
+        if not message_indices:
+            return jsonify({"success": False, "error": "No se proporcionaron índices de mensajes"}), 400
+
+        # Obtener la conversación completa
+        user_data = conversation_manager.get_full_history(user_id)
+        all_messages = user_data.get('messages', [])
+
+        # Filtrar los mensajes seleccionados
+        selected_messages = []
+        for idx in sorted(message_indices):
+            if 0 <= idx < len(all_messages):
+                msg = all_messages[idx]
+                selected_messages.append({
+                    "role": msg["role"],
+                    "content": msg["content"]
+                })
+
+        if not selected_messages:
+            return jsonify({"success": False, "error": "No se encontraron mensajes válidos"}), 400
+
+        # Crear instancia temporal de MemoryManager para reprocesar
+        temp_memory_manager = MemoryManager(
+            config={
+                "history_db_path": mem0_config.get("history_db_path", "/tmp/mem0_history.db"),
+                "vector_store": mem0_config.get("vector_store", {}),
+                "llm": mem0_config.get("llm", {}),
+                "embedder": mem0_config.get("embedder", {})
+            },
+            enabled=True
+        )
+
+        # Procesar los mensajes en mem0
+        success = temp_memory_manager.add_conversation(user_id, selected_messages)
+
+        if success:
+            logger.info(f"{len(selected_messages)} mensajes reprocesados exitosamente para usuario {user_id} desde {client_ip}")
+            return jsonify({
+                "success": True,
+                "message": f"{len(selected_messages)} mensajes reprocesados exitosamente",
+                "processed": len(selected_messages)
+            })
+        else:
+            return jsonify({"success": False, "error": "Error al reprocesar mensajes"}), 500
+
+    except Exception as e:
+        logger.error(f"Error al reprocesar mensajes para usuario {user_id}: {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route('/settings', methods=['GET', 'POST'])
 @login_required
 def settings():
