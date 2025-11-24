@@ -5,6 +5,7 @@ import json
 import logging
 import random
 import asyncio
+import os
 from datetime import datetime, timedelta
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
@@ -47,6 +48,12 @@ class CompanionBot:
         logger.info("="*60)
         logger.info("Inicializando CompanionBot")
         logger.info("="*60)
+
+        # Configurar GOOGLE_API_KEY como variable de entorno para mem0
+        # mem0 necesita esta variable de entorno para Gemini
+        if 'GOOGLE_API_KEY' not in os.environ:
+            os.environ['GOOGLE_API_KEY'] = self.config["llm"]["api_key"]
+            logger.info("GOOGLE_API_KEY configurada desde config.json")
 
         # Inicializar gestor de memorias mem0 si está habilitado
         mem0_config = self.config.get("mem0", {})

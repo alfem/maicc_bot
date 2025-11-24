@@ -30,10 +30,12 @@ class MemoryManager:
             # Importar mem0 solo si está habilitado
             from mem0 import Memory
 
-            # Configurar la API key de Google AI desde variable de entorno
-            # mem0 la buscará automáticamente en GOOGLE_API_KEY
+            # Verificar que GOOGLE_API_KEY esté configurada
+            # mem0 la busca automáticamente en las variables de entorno
             if not os.getenv('GOOGLE_API_KEY'):
-                self.logger.warning("GOOGLE_API_KEY no encontrada. mem0 podría fallar.")
+                self.logger.error("GOOGLE_API_KEY no está configurada. mem0 no funcionará correctamente.")
+                self.enabled = False
+                return
 
             # Inicializar mem0 con la configuración
             self.memory = Memory.from_config(config)

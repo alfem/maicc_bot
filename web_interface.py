@@ -2,6 +2,7 @@
 Interfaz web para consultar los diálogos del bot.
 """
 import json
+import os
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from functools import wraps
@@ -40,6 +41,12 @@ conversation_manager = ConversationManager(
 )
 
 logger.info(f"Directorio de conversaciones: {config['storage']['conversations_dir']}")
+
+# Configurar GOOGLE_API_KEY como variable de entorno para mem0
+# mem0 necesita esta variable de entorno para Gemini
+if 'GOOGLE_API_KEY' not in os.environ:
+    os.environ['GOOGLE_API_KEY'] = config["llm"]["api_key"]
+    logger.info("GOOGLE_API_KEY configurada desde config.json")
 
 # Inicializar gestor de memorias mem0 si está habilitado
 mem0_config = config.get("mem0", {})
