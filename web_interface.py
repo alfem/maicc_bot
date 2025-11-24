@@ -153,9 +153,20 @@ def user_conversation(user_id):
     # Obtener memorias de mem0 si está habilitado
     memories = []
     memory_stats = {"total": 0, "enabled": False}
-    if memory_manager and memory_manager.enabled:
+    if mem0_enabled:
         try:
-            memories = memory_manager.get_all_memories(user_id)
+            # Crear una nueva instancia de MemoryManager para forzar recarga desde disco
+            # Esto asegura que leemos los datos más recientes guardados por el bot
+            temp_memory_manager = MemoryManager(
+                config={
+                    "history_db_path": mem0_config.get("history_db_path", "/tmp/mem0_history.db"),
+                    "vector_store": mem0_config.get("vector_store", {}),
+                    "llm": mem0_config.get("llm", {}),
+                    "embedder": mem0_config.get("embedder", {})
+                },
+                enabled=True
+            )
+            memories = temp_memory_manager.get_all_memories(user_id)
             memory_stats = {"total": len(memories), "enabled": True}
             logger.debug(f"Recuperadas {len(memories)} memorias de mem0 para usuario {user_id}")
         except Exception as e:
@@ -208,11 +219,21 @@ def api_user_memories(user_id):
     client_ip = request.remote_addr
     logger.debug(f"API /api/user/{user_id}/memories llamada desde {client_ip}")
 
-    if not memory_manager or not memory_manager.enabled:
+    if not mem0_enabled:
         return jsonify({"error": "mem0 no está habilitado", "memories": [], "count": 0})
 
     try:
-        memories = memory_manager.get_all_memories(user_id)
+        # Crear una nueva instancia para forzar recarga desde disco
+        temp_memory_manager = MemoryManager(
+            config={
+                "history_db_path": mem0_config.get("history_db_path", "/tmp/mem0_history.db"),
+                "vector_store": mem0_config.get("vector_store", {}),
+                "llm": mem0_config.get("llm", {}),
+                "embedder": mem0_config.get("embedder", {})
+            },
+            enabled=True
+        )
+        memories = temp_memory_manager.get_all_memories(user_id)
         logger.debug(f"Recuperadas {len(memories)} memorias para usuario {user_id}")
         return jsonify({"memories": memories, "count": len(memories)})
     except Exception as e:
