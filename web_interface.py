@@ -7,6 +7,7 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, s
 from functools import wraps
 
 from conversation_manager import ConversationManager
+from memory_manager import MemoryManager
 from logger_config import setup_logging, get_logger
 from config_reloader import create_reload_signal
 
@@ -39,6 +40,28 @@ conversation_manager = ConversationManager(
 )
 
 logger.info(f"Directorio de conversaciones: {config['storage']['conversations_dir']}")
+
+# Inicializar gestor de memorias mem0 si está habilitado
+mem0_config = config.get("mem0", {})
+mem0_enabled = mem0_config.get("enabled", False)
+memory_manager = None
+
+if mem0_enabled:
+    try:
+        memory_manager = MemoryManager(
+            config={
+                "vector_store": mem0_config.get("vector_store", {}),
+                "llm": mem0_config.get("llm", {}),
+                "embedder": mem0_config.get("embedder", {})
+            },
+            enabled=True
+        )
+        logger.info("Gestor de memorias mem0 inicializado para interfaz web")
+    except Exception as e:
+        logger.error(f"Error al inicializar MemoryManager en web interface: {e}")
+        memory_manager = None
+else:
+    logger.info("Gestor de memorias mem0 deshabilitado")
 
 
 def login_required(f):
@@ -119,12 +142,25 @@ def user_conversation(user_id):
 
     logger.debug(f"Mostrando {len(messages)} mensajes del usuario {user_id}")
 
+    # Obtener memorias de mem0 si está habilitado
+    memories = []
+    memory_stats = {"total": 0, "enabled": False}
+    if memory_manager and memory_manager.enabled:
+        try:
+            memories = memory_manager.get_all_memories(user_id)
+            memory_stats = {"total": len(memories), "enabled": True}
+            logger.debug(f"Recuperadas {len(memories)} memorias de mem0 para usuario {user_id}")
+        except Exception as e:
+            logger.error(f"Error al recuperar memorias para usuario {user_id}: {e}")
+
     return render_template(
         'conversation.html',
         user_data=user_data,
         messages=messages,
         start_date=start_date,
-        end_date=end_date
+        end_date=end_date,
+        memories=memories,
+        memory_stats=memory_stats
     )
 
 
@@ -155,6 +191,25 @@ def api_user_messages(user_id):
         messages = user_data.get('messages', [])
 
     return jsonify(messages)
+
+
+@app.route('/api/user/<int:user_id>/memories')
+@login_required
+def api_user_memories(user_id):
+    """API para obtener memorias de mem0 de un usuario."""
+    client_ip = request.remote_addr
+    logger.debug(f"API /api/user/{user_id}/memories llamada desde {client_ip}")
+
+    if not memory_manager or not memory_manager.enabled:
+        return jsonify({"error": "mem0 no está habilitado", "memories": [], "count": 0})
+
+    try:
+        memories = memory_manager.get_all_memories(user_id)
+        logger.debug(f"Recuperadas {len(memories)} memorias para usuario {user_id}")
+        return jsonify({"memories": memories, "count": len(memories)})
+    except Exception as e:
+        logger.error(f"Error al obtener memorias para usuario {user_id}: {e}", exc_info=True)
+        return jsonify({"error": str(e), "memories": [], "count": 0}), 500
 
 
 @app.route('/settings', methods=['GET', 'POST'])

@@ -216,6 +216,96 @@
             padding: 40px;
             color: #666;
         }
+
+        /* Estilos para sección de memorias mem0 */
+        .memories-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .memories-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .memory-stats {
+            color: #666;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 5px;
+        }
+
+        .memories-list {
+            margin-top: 15px;
+        }
+
+        .memory-item {
+            border-left: 3px solid #667eea;
+            padding: 12px 15px;
+            margin: 12px 0;
+            background: #f9f9f9;
+            border-radius: 5px;
+            transition: background 0.2s;
+        }
+
+        .memory-item:hover {
+            background: #f0f0f0;
+        }
+
+        .memory-content {
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+
+        .memory-meta {
+            font-size: 12px;
+            color: #666;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .memory-id {
+            font-family: monospace;
+            background: #e0e0e0;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        .memory-categories {
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .memory-date {
+            color: #999;
+        }
+
+        .no-memories {
+            color: #999;
+            font-style: italic;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .memories-disabled {
+            background: #fff9e6;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ffe066;
+        }
+
+        .memories-disabled p {
+            color: #806000;
+            margin: 0;
+        }
     </style>
 </head>
 <body>
@@ -258,6 +348,43 @@
                 <a href="/user/{{ user_data.user_id }}" class="clear-btn">Por Defecto</a>
             </form>
         </div>
+
+        <!-- Sección de Memorias mem0 -->
+        {% if memory_stats.enabled %}
+        <div class="memories-section">
+            <h3>🧠 Memorias Semánticas (mem0)</h3>
+            <div class="memory-stats">
+                Total de memorias almacenadas: <strong>{{ memory_stats.total }}</strong>
+            </div>
+
+            {% if memories %}
+            <div class="memories-list">
+                {% for mem in memories %}
+                <div class="memory-item">
+                    <div class="memory-content">{{ mem.memory }}</div>
+                    <div class="memory-meta">
+                        <span class="memory-id">ID: {{ mem.id }}</span>
+                        {% if mem.categories %}
+                        <span class="memory-categories">
+                            Categorías: {{ mem.categories|join(', ') }}
+                        </span>
+                        {% endif %}
+                        {% if mem.created_at %}
+                        <span class="memory-date">{{ mem.created_at.split('T')[0] }} {{ mem.created_at.split('T')[1].split('.')[0] if 'T' in mem.created_at else mem.created_at }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="no-memories">No hay memorias almacenadas aún para este usuario.</p>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="memories-disabled">
+            <p>ℹ️ Sistema de memorias mem0 deshabilitado en la configuración</p>
+        </div>
+        {% endif %}
 
         <div class="conversation">
             {% if messages %}
