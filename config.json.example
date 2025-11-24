@@ -15,6 +15,28 @@
     "conversations_dir": "./conversations",
     "max_context_messages": 20
   },
+  "mem0": {
+    "enabled": true,
+    "vector_store": {
+      "provider": "qdrant",
+      "config": {
+        "path": "./qdrant_data",
+        "collection_name": "companion_memories"
+      }
+    },
+    "llm": {
+      "provider": "google_ai",
+      "config": {
+        "model": "gemini-2.0-flash-exp"
+      }
+    },
+    "embedder": {
+      "provider": "google_ai",
+      "config": {
+        "model": "text-embedding-004"
+      }
+    }
+  },
   "proactive": {
     "enabled": true,
     "inactivity_minutes": 60,

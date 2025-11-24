@@ -7,22 +7,26 @@ import os
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Optional
+from memory_manager import MemoryManager
 
 
 class ConversationManager:
     """Gestiona las conversaciones de usuarios individuales."""
 
-    def __init__(self, conversations_dir: str, max_context_messages: int = 20):
+    def __init__(self, conversations_dir: str, max_context_messages: int = 20,
+                 memory_manager: Optional[MemoryManager] = None):
         """
         Inicializa el gestor de conversaciones.
 
         Args:
             conversations_dir: Directorio donde se guardan las conversaciones
             max_context_messages: Número máximo de mensajes a mantener en contexto
+            memory_manager: Gestor de memorias mem0 (opcional)
         """
         self.conversations_dir = Path(conversations_dir)
         self.conversations_dir.mkdir(parents=True, exist_ok=True)
         self.max_context_messages = max_context_messages
+        self.memory_manager = memory_manager
 
     def _get_user_file(self, user_id: int) -> Path:
         """Obtiene la ruta del archivo de conversación de un usuario."""
@@ -86,6 +90,17 @@ class ConversationManager:
         data["messages"].append(message)
 
         self._save_user_data(user_id, data)
+
+        # Guardar también en mem0 si está habilitado
+        if self.memory_manager and self.memory_manager.enabled:
+            # Enviar los últimos mensajes a mem0 para extracción de memorias
+            # Tomamos un contexto más amplio para mejor extracción (últimos 10 mensajes)
+            recent_messages = data["messages"][-10:]
+            formatted_messages = [
+                {"role": msg["role"], "content": msg["content"]}
+                for msg in recent_messages
+            ]
+            self.memory_manager.add_conversation(user_id, formatted_messages)
 
     def get_context(self, user_id: int) -> List[Dict[str, str]]:
         """

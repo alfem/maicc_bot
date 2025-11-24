@@ -14,6 +14,7 @@ from llm_client import LLMClient
 from news_manager import NewsManager
 from mood_manager import MoodManager
 from tts_client import TTSClient
+from memory_manager import MemoryManager
 from logger_config import setup_logging, get_logger
 from config_reloader import ConfigReloader
 
@@ -47,10 +48,28 @@ class CompanionBot:
         logger.info("Inicializando CompanionBot")
         logger.info("="*60)
 
+        # Inicializar gestor de memorias mem0 si está habilitado
+        mem0_config = self.config.get("mem0", {})
+        mem0_enabled = mem0_config.get("enabled", False)
+        if mem0_enabled:
+            self.memory_manager = MemoryManager(
+                config={
+                    "vector_store": mem0_config.get("vector_store", {}),
+                    "llm": mem0_config.get("llm", {}),
+                    "embedder": mem0_config.get("embedder", {})
+                },
+                enabled=True
+            )
+            logger.info("Gestor de memorias mem0 inicializado")
+        else:
+            self.memory_manager = None
+            logger.info("Gestor de memorias mem0 deshabilitado")
+
         # Inicializar componentes
         self.conversation_manager = ConversationManager(
             conversations_dir=self.config["storage"]["conversations_dir"],
-            max_context_messages=self.config["storage"]["max_context_messages"]
+            max_context_messages=self.config["storage"]["max_context_messages"],
+            memory_manager=self.memory_manager
         )
 
         self.llm_client = LLMClient(
@@ -197,7 +216,16 @@ class CompanionBot:
         user_id = update.effective_user.id
         logger.info(f"Comando /reset recibido de usuario {user_id}")
 
+        # Borrar historial de conversación en JSON
         self.conversation_manager.clear_user_history(user_id)
+
+        # Borrar memorias de mem0 si está habilitado
+        if self.memory_manager and self.memory_manager.enabled:
+            success = self.memory_manager.delete_all_memories(user_id)
+            if success:
+                logger.info(f"Memorias de mem0 borradas para usuario {user_id}")
+            else:
+                logger.warning(f"No se pudieron borrar memorias de mem0 para usuario {user_id}")
 
         reset_message = (
             "✨ He borrado nuestro historial de conversación.\n\n"
@@ -232,14 +260,34 @@ class CompanionBot:
         context_messages = self.conversation_manager.get_context(user.id)
         logger.debug(f"Contexto obtenido: {len(context_messages)} mensajes")
 
+        # Recuperar memorias relevantes de mem0 si está habilitado
+        memories_context = ""
+        if self.memory_manager and self.memory_manager.enabled:
+            logger.debug(f"Recuperando memorias relevantes de mem0 para usuario {user.id}")
+            memories = self.memory_manager.get_relevant_memories(
+                user_id=user.id,
+                query=user_message,
+                limit=5
+            )
+            if memories:
+                memories_context = self.memory_manager.format_memories_for_context(memories)
+                logger.info(f"Memorias recuperadas de mem0: {len(memories)} memorias relevantes")
+            else:
+                logger.debug("No se encontraron memorias relevantes en mem0")
+
         # Obtener mood actual
         current_mood = self.mood_manager.get_current_mood()
         mood_prompt = self.mood_manager.get_mood_prompt()
         logger.debug(f"Mood actual: {current_mood.get('base_mood', 'N/A')}")
 
-        # Obtener respuesta del LLM con el mood actual
+        # Combinar mood y memorias en el contexto adicional
+        additional_context = mood_prompt
+        if memories_context:
+            additional_context = memories_context + "\n\n" + mood_prompt
+
+        # Obtener respuesta del LLM con el contexto, memorias y mood actual
         logger.debug(f"Solicitando respuesta al LLM para usuario {user.id}")
-        assistant_response = self.llm_client.get_response(context_messages, mood_prompt)
+        assistant_response = self.llm_client.get_response(context_messages, additional_context)
 
         # Calcular retraso basado en la longitud de la respuesta
         typing_delay = self._calculate_typing_delay(assistant_response)
