@@ -60,17 +60,20 @@ class MemoryManager:
             True si se añadió correctamente, False en caso contrario
         """
         if not self.enabled or not self.memory:
+            self.logger.debug(f"mem0 deshabilitado, no se añade conversación para usuario {user_id}")
             return False
 
         try:
             # mem0 espera el user_id como string
             user_id_str = str(user_id)
 
+            self.logger.info(f"Añadiendo {len(messages)} mensajes a mem0 para usuario {user_id}")
+
             # Añadir los mensajes a mem0
             # mem0 extraerá automáticamente los hechos importantes usando el LLM configurado
-            self.memory.add(messages, user_id=user_id_str)
+            result = self.memory.add(messages, user_id=user_id_str)
 
-            self.logger.debug(f"Conversación añadida a mem0 para usuario {user_id}")
+            self.logger.info(f"Conversación añadida a mem0 para usuario {user_id}. Resultado: {result}")
             return True
 
         except Exception as e:

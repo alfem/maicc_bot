@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Optional
 from memory_manager import MemoryManager
+from logger_config import get_logger
 
 
 class ConversationManager:
@@ -27,6 +28,7 @@ class ConversationManager:
         self.conversations_dir.mkdir(parents=True, exist_ok=True)
         self.max_context_messages = max_context_messages
         self.memory_manager = memory_manager
+        self.logger = get_logger('telegram')
 
     def _get_user_file(self, user_id: int) -> Path:
         """Obtiene la ruta del archivo de conversación de un usuario."""
