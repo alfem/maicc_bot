@@ -220,6 +220,68 @@ def api_user_memories(user_id):
         return jsonify({"error": str(e), "memories": [], "count": 0}), 500
 
 
+@app.route('/api/memory/<memory_id>', methods=['DELETE'])
+@login_required
+def api_delete_memory(memory_id):
+    """API para borrar una memoria específica."""
+    client_ip = request.remote_addr
+    logger.info(f"API DELETE /api/memory/{memory_id} llamada desde {client_ip}")
+
+    if not memory_manager or not memory_manager.enabled:
+        return jsonify({"success": False, "error": "mem0 no está habilitado"}), 400
+
+    try:
+        success = memory_manager.delete_memory(memory_id)
+        if success:
+            logger.info(f"Memoria {memory_id} borrada exitosamente desde {client_ip}")
+            return jsonify({"success": True, "message": "Memoria borrada exitosamente"})
+        else:
+            return jsonify({"success": False, "error": "No se pudo borrar la memoria"}), 500
+    except Exception as e:
+        logger.error(f"Error al borrar memoria {memory_id}: {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/user/<int:user_id>/memories/delete', methods=['POST'])
+@login_required
+def api_delete_multiple_memories(user_id):
+    """API para borrar múltiples memorias."""
+    client_ip = request.remote_addr
+    logger.info(f"API POST /api/user/{user_id}/memories/delete llamada desde {client_ip}")
+
+    if not memory_manager or not memory_manager.enabled:
+        return jsonify({"success": False, "error": "mem0 no está habilitado"}), 400
+
+    try:
+        data = request.get_json()
+        memory_ids = data.get('memory_ids', [])
+
+        if not memory_ids:
+            return jsonify({"success": False, "error": "No se proporcionaron IDs de memorias"}), 400
+
+        deleted_count = 0
+        failed_count = 0
+
+        for memory_id in memory_ids:
+            success = memory_manager.delete_memory(memory_id)
+            if success:
+                deleted_count += 1
+            else:
+                failed_count += 1
+
+        logger.info(f"{deleted_count} memorias borradas, {failed_count} fallaron para usuario {user_id} desde {client_ip}")
+
+        return jsonify({
+            "success": True,
+            "deleted": deleted_count,
+            "failed": failed_count,
+            "message": f"{deleted_count} memorias borradas exitosamente"
+        })
+    except Exception as e:
+        logger.error(f"Error al borrar memorias para usuario {user_id}: {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route('/settings', methods=['GET', 'POST'])
 @login_required
 def settings():

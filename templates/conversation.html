@@ -250,10 +250,28 @@
             background: #f9f9f9;
             border-radius: 5px;
             transition: background 0.2s;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
         }
 
         .memory-item:hover {
             background: #f0f0f0;
+        }
+
+        .memory-checkbox {
+            flex-shrink: 0;
+            padding-top: 2px;
+        }
+
+        .memory-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .memory-body {
+            flex: 1;
         }
 
         .memory-content {
@@ -261,6 +279,10 @@
             color: #333;
             margin-bottom: 8px;
             line-height: 1.5;
+        }
+
+        .memory-actions-single {
+            flex-shrink: 0;
         }
 
         .memory-meta {
@@ -304,6 +326,74 @@
 
         .memories-disabled p {
             color: #806000;
+            margin: 0;
+        }
+
+        .memory-actions {
+            margin: 15px 0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+
+        .btn-secondary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5568d3;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-danger:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-delete-single {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .btn-delete-single:hover {
+            background: #c82333;
+            transform: scale(1.1);
+        }
+
+        .memories-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .memories-header h3 {
             margin: 0;
         }
     </style>
@@ -352,26 +442,40 @@
         <!-- Sección de Memorias mem0 -->
         {% if memory_stats.enabled %}
         <div class="memories-section">
-            <h3>🧠 Memorias Semánticas (mem0)</h3>
-            <div class="memory-stats">
-                Total de memorias almacenadas: <strong>{{ memory_stats.total }}</strong>
+            <div class="memories-header">
+                <h3>🧠 Memorias Semánticas (mem0)</h3>
+                <div class="memory-stats">
+                    Total de memorias almacenadas: <strong id="memory-count">{{ memory_stats.total }}</strong>
+                </div>
             </div>
 
             {% if memories %}
-            <div class="memories-list">
+            <div class="memory-actions">
+                <button id="select-all-btn" class="btn btn-secondary" onclick="toggleSelectAll()">Seleccionar todas</button>
+                <button id="delete-selected-btn" class="btn btn-danger" onclick="deleteSelected()" disabled>Borrar seleccionadas (<span id="selected-count">0</span>)</button>
+            </div>
+            <div class="memories-list" id="memories-list">
                 {% for mem in memories %}
-                <div class="memory-item">
-                    <div class="memory-content">{{ mem.memory }}</div>
-                    <div class="memory-meta">
-                        <span class="memory-id">ID: {{ mem.id }}</span>
-                        {% if mem.categories %}
-                        <span class="memory-categories">
-                            Categorías: {{ mem.categories|join(', ') }}
-                        </span>
-                        {% endif %}
-                        {% if mem.created_at %}
-                        <span class="memory-date">{{ mem.created_at.split('T')[0] }} {{ mem.created_at.split('T')[1].split('.')[0] if 'T' in mem.created_at else mem.created_at }}</span>
-                        {% endif %}
+                <div class="memory-item" data-memory-id="{{ mem.id }}">
+                    <div class="memory-checkbox">
+                        <input type="checkbox" class="memory-select" id="mem-{{ mem.id }}" onchange="updateSelectedCount()">
+                    </div>
+                    <div class="memory-body">
+                        <div class="memory-content">{{ mem.memory }}</div>
+                        <div class="memory-meta">
+                            <span class="memory-id">ID: {{ mem.id }}</span>
+                            {% if mem.categories %}
+                            <span class="memory-categories">
+                                Categorías: {{ mem.categories|join(', ') }}
+                            </span>
+                            {% endif %}
+                            {% if mem.created_at %}
+                            <span class="memory-date">{{ mem.created_at.split('T')[0] }} {{ mem.created_at.split('T')[1].split('.')[0] if 'T' in mem.created_at else mem.created_at }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="memory-actions-single">
+                        <button class="btn btn-delete-single" onclick="deleteSingleMemory('{{ mem.id }}')" title="Borrar esta memoria">🗑️</button>
                     </div>
                 </div>
                 {% endfor %}
@@ -419,5 +523,131 @@
             {% endif %}
         </div>
     </div>
+
+    <script>
+        const userId = {{ user_data.user_id }};
+
+        function updateSelectedCount() {
+            const checkboxes = document.querySelectorAll('.memory-select');
+            const selectedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+            document.getElementById('selected-count').textContent = selectedCount;
+            document.getElementById('delete-selected-btn').disabled = selectedCount === 0;
+        }
+
+        function toggleSelectAll() {
+            const checkboxes = document.querySelectorAll('.memory-select');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            checkboxes.forEach(cb => cb.checked = !allChecked);
+            updateSelectedCount();
+
+            const btn = document.getElementById('select-all-btn');
+            btn.textContent = allChecked ? 'Seleccionar todas' : 'Deseleccionar todas';
+        }
+
+        async function deleteSingleMemory(memoryId) {
+            if (!confirm('¿Estás seguro de que quieres borrar esta memoria?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/memory/${memoryId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Eliminar el elemento del DOM
+                    const memoryItem = document.querySelector(`[data-memory-id="${memoryId}"]`);
+                    if (memoryItem) {
+                        memoryItem.remove();
+                    }
+
+                    // Actualizar contador
+                    const memoryCount = document.getElementById('memory-count');
+                    const currentCount = parseInt(memoryCount.textContent);
+                    memoryCount.textContent = currentCount - 1;
+
+                    // Verificar si no quedan memorias
+                    const memoryList = document.getElementById('memories-list');
+                    if (memoryList.children.length === 0) {
+                        memoryList.innerHTML = '<p class="no-memories">No hay memorias almacenadas aún para este usuario.</p>';
+                        document.querySelector('.memory-actions').style.display = 'none';
+                    }
+
+                    alert('Memoria borrada exitosamente');
+                } else {
+                    alert('Error al borrar memoria: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al borrar memoria: ' + error.message);
+            }
+        }
+
+        async function deleteSelected() {
+            const checkboxes = document.querySelectorAll('.memory-select:checked');
+            const memoryIds = Array.from(checkboxes).map(cb => {
+                return cb.closest('.memory-item').dataset.memoryId;
+            });
+
+            if (memoryIds.length === 0) {
+                alert('No hay memorias seleccionadas');
+                return;
+            }
+
+            if (!confirm(`¿Estás seguro de que quieres borrar ${memoryIds.length} memoria(s)?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/user/${userId}/memories/delete`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ memory_ids: memoryIds })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Eliminar elementos del DOM
+                    memoryIds.forEach(id => {
+                        const memoryItem = document.querySelector(`[data-memory-id="${id}"]`);
+                        if (memoryItem) {
+                            memoryItem.remove();
+                        }
+                    });
+
+                    // Actualizar contador
+                    const memoryCount = document.getElementById('memory-count');
+                    const currentCount = parseInt(memoryCount.textContent);
+                    memoryCount.textContent = currentCount - data.deleted;
+
+                    // Resetear selección
+                    updateSelectedCount();
+                    document.getElementById('select-all-btn').textContent = 'Seleccionar todas';
+
+                    // Verificar si no quedan memorias
+                    const memoryList = document.getElementById('memories-list');
+                    if (memoryList.children.length === 0) {
+                        memoryList.innerHTML = '<p class="no-memories">No hay memorias almacenadas aún para este usuario.</p>';
+                        document.querySelector('.memory-actions').style.display = 'none';
+                    }
+
+                    alert(`${data.deleted} memoria(s) borrada(s) exitosamente` + (data.failed > 0 ? `, ${data.failed} fallaron` : ''));
+                } else {
+                    alert('Error al borrar memorias: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al borrar memorias: ' + error.message);
+            }
+        }
+    </script>
 </body>
 </html>

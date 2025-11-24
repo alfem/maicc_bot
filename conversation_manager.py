@@ -93,16 +93,23 @@ class ConversationManager:
 
         self._save_user_data(user_id, data)
 
-        # Guardar también en mem0 si está habilitado
-        if self.memory_manager and self.memory_manager.enabled:
-            # Enviar los últimos mensajes a mem0 para extracción de memorias
-            # Tomamos un contexto más amplio para mejor extracción (últimos 10 mensajes)
-            recent_messages = data["messages"][-10:]
+        # Guardar también en mem0 SOLO si es un mensaje del asistente
+        # Esto evita duplicados, ya que cada mensaje del usuario genera una respuesta del asistente
+        if role == "assistant" and self.memory_manager and self.memory_manager.enabled:
+            self.logger.info(f"Intentando guardar en mem0 para usuario {user_id}")
+            # Enviar los últimos 4 mensajes (2 intercambios) para dar contexto suficiente
+            # pero sin procesar toda la historia que crearía duplicados
+            recent_messages = data["messages"][-4:] if len(data["messages"]) >= 4 else data["messages"]
             formatted_messages = [
                 {"role": msg["role"], "content": msg["content"]}
                 for msg in recent_messages
             ]
-            self.memory_manager.add_conversation(user_id, formatted_messages)
+            self.logger.info(f"Enviando {len(formatted_messages)} mensajes a mem0: {[m['role'] for m in formatted_messages]}")
+            success = self.memory_manager.add_conversation(user_id, formatted_messages)
+            if success:
+                self.logger.info(f"Guardado exitoso en mem0 para usuario {user_id} ({len(formatted_messages)} mensajes)")
+            else:
+                self.logger.warning(f"Fallo al guardar en mem0 para usuario {user_id}")
 
     def get_context(self, user_id: int) -> List[Dict[str, str]]:
         """
