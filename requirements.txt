@@ -6,4 +6,4 @@ feedparser==6.0.11
 ephem==4.1.5
 requests==2.31.0
 mem0ai
-qdrant-client
+faiss-cpu

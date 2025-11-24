@@ -50,7 +50,7 @@ class CompanionBot:
         logger.info("="*60)
 
         # Configurar GOOGLE_API_KEY como variable de entorno para mem0
-        # mem0 necesita esta variable de entorno para Gemini
+        # mem0 necesita esta variable de entorno para Gemini (LLM y embeddings)
         if 'GOOGLE_API_KEY' not in os.environ:
             os.environ['GOOGLE_API_KEY'] = self.config["llm"]["api_key"]
             logger.info("GOOGLE_API_KEY configurada desde config.json")
@@ -61,6 +61,7 @@ class CompanionBot:
         if mem0_enabled:
             self.memory_manager = MemoryManager(
                 config={
+                    "history_db_path": mem0_config.get("history_db_path", "/tmp/mem0_history.db"),
                     "vector_store": mem0_config.get("vector_store", {}),
                     "llm": mem0_config.get("llm", {}),
                     "embedder": mem0_config.get("embedder", {})

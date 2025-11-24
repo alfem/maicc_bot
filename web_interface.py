@@ -57,6 +57,7 @@ if mem0_enabled:
     try:
         memory_manager = MemoryManager(
             config={
+                "history_db_path": mem0_config.get("history_db_path", "/tmp/mem0_history.db"),
                 "vector_store": mem0_config.get("vector_store", {}),
                 "llm": mem0_config.get("llm", {}),
                 "embedder": mem0_config.get("embedder", {})
