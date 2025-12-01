@@ -391,73 +391,149 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="tts_model">Modelo TTS</label>
-                    <select id="tts_model" name="tts_model">
-                        <option value="gemini-2.5-flash-preview-tts" {% if config.tts.model == 'gemini-2.5-flash-preview-tts' %}selected{% endif %}>Gemini 2.5 Flash TTS (Recomendado)</option>
-                        <option value="gemini-2.0-flash-tts" {% if config.tts.model == 'gemini-2.0-flash-tts' %}selected{% endif %}>Gemini 2.0 Flash TTS</option>
+                    <label for="tts_provider">Proveedor de TTS</label>
+                    <select id="tts_provider" name="tts_provider" onchange="toggleTTSProvider()">
+                        <option value="gemini" {% if config.tts.provider == 'gemini' %}selected{% endif %}>Google Gemini TTS (Incluido)</option>
+                        <option value="elevenlabs" {% if config.tts.provider == 'elevenlabs' %}selected{% endif %}>Eleven Labs (Mayor calidad)</option>
                     </select>
-                    <span class="help-text">Modelo de IA para generar voz</span>
-                </div>
-
-                <div class="form-group">
-                    <label for="tts_speaker">Voz (Speaker)</label>
-                    <select id="tts_speaker" name="tts_speaker">
-                        <option value="Leda" {% if config.tts.speaker == 'Leda' %}selected{% endif %}>Leda - Juvenil (Por defecto)</option>
-                        <option value="Puck" {% if config.tts.speaker == 'Puck' %}selected{% endif %}>Puck - Optimista</option>
-                        <option value="Charon" {% if config.tts.speaker == 'Charon' %}selected{% endif %}>Charon - Informativa</option>
-                        <option value="Kore" {% if config.tts.speaker == 'Kore' %}selected{% endif %}>Kore - Firme</option>
-                        <option value="Fenrir" {% if config.tts.speaker == 'Fenrir' %}selected{% endif %}>Fenrir - Excitable</option>
-                        <option value="Aoede" {% if config.tts.speaker == 'Aoede' %}selected{% endif %}>Aoede - Breezy</option>
-                        <option value="Zephyr" {% if config.tts.speaker == 'Zephyr' %}selected{% endif %}>Zephyr - Brillante</option>
-                        <option value="Orus" {% if config.tts.speaker == 'Orus' %}selected{% endif %}>Orus - Firme</option>
-                        <option value="Callirrhoe" {% if config.tts.speaker == 'Callirrhoe' %}selected{% endif %}>Callirrhoe - Tranquila</option>
-                        <option value="Autonoe" {% if config.tts.speaker == 'Autonoe' %}selected{% endif %}>Autonoe - Brillante</option>
-                        <option value="Enceladus" {% if config.tts.speaker == 'Enceladus' %}selected{% endif %}>Enceladus - Respiración</option>
-                        <option value="Iapetus" {% if config.tts.speaker == 'Iapetus' %}selected{% endif %}>Iapetus - Clara</option>
-                        <option value="Umbriel" {% if config.tts.speaker == 'Umbriel' %}selected{% endif %}>Umbriel - Relajada</option>
-                        <option value="Algieba" {% if config.tts.speaker == 'Algieba' %}selected{% endif %}>Algieba - Suave</option>
-                        <option value="Despina" {% if config.tts.speaker == 'Despina' %}selected{% endif %}>Despina - Suave</option>
-                        <option value="Erinome" {% if config.tts.speaker == 'Erinome' %}selected{% endif %}>Erinome - Despejada</option>
-                        <option value="Algenib" {% if config.tts.speaker == 'Algenib' %}selected{% endif %}>Algenib - Arenosa</option>
-                        <option value="Rasalgethi" {% if config.tts.speaker == 'Rasalgethi' %}selected{% endif %}>Rasalgethi - Informativa</option>
-                        <option value="Laomedeia" {% if config.tts.speaker == 'Laomedeia' %}selected{% endif %}>Laomedeia - Optimista</option>
-                        <option value="Achernar" {% if config.tts.speaker == 'Achernar' %}selected{% endif %}>Achernar - Suave</option>
-                        <option value="Alnilam" {% if config.tts.speaker == 'Alnilam' %}selected{% endif %}>Alnilam - Firme</option>
-                        <option value="Schedar" {% if config.tts.speaker == 'Schedar' %}selected{% endif %}>Schedar - Par</option>
-                        <option value="Gacrux" {% if config.tts.speaker == 'Gacrux' %}selected{% endif %}>Gacrux - Madura</option>
-                        <option value="Pulcherrima" {% if config.tts.speaker == 'Pulcherrima' %}selected{% endif %}>Pulcherrima - Forward</option>
-                        <option value="Achird" {% if config.tts.speaker == 'Achird' %}selected{% endif %}>Achird - Amistosa</option>
-                        <option value="Sulafat" {% if config.tts.speaker == 'Sulafat' %}selected{% endif %}>Sulafat</option>
-                        <option value="Zubenelgenubi" {% if config.tts.speaker == 'Zubenelgenubi' %}selected{% endif %}>Zubenelgenubi - Casual</option>
-                        <option value="Vindemiatrix" {% if config.tts.speaker == 'Vindemiatrix' %}selected{% endif %}>Vindemiatrix - Suave</option>
-                        <option value="Sadachbia" {% if config.tts.speaker == 'Sadachbia' %}selected{% endif %}>Sadachbia - Animada</option>
-                    </select>
-                    <span class="help-text">Selecciona la voz que usará el bot (30+ voces disponibles)</span>
-                </div>
-
-                <div class="form-group">
-                    <label for="tts_preamble">Preámbulo</label>
-                    <input type="text" id="tts_preamble" name="tts_preamble"
-                           value="{{ config.tts.preamble }}"
-                           placeholder="Habla de forma natural y expresiva: ">
-                    <span class="help-text">Texto que se añade antes del contenido para guiar el estilo de voz</span>
+                    <span class="help-text">Selecciona el servicio que generará las voces</span>
                 </div>
 
                 <div class="inline-group">
-                    <div class="form-group">
-                        <label for="tts_temperature">Temperatura</label>
-                        <input type="number" id="tts_temperature" name="tts_temperature"
-                               value="{{ config.tts.temperature if config.tts.temperature is defined else 0.5 }}"
-                               min="0" max="1" step="0.1">
-                        <span class="help-text">Control de variación (0.0 - 1.0)</span>
-                    </div>
-
                     <div class="form-group">
                         <label for="tts_frequency">Frecuencia de mensajes de voz (%)</label>
                         <input type="number" id="tts_frequency" name="tts_frequency"
                                value="{{ config.tts.frequency_percent }}"
                                min="0" max="100" step="5">
                         <span class="help-text">Porcentaje de mensajes que se enviarán como voz (0 = nunca, 100 = siempre)</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tts_audio_dir">Directorio de audio</label>
+                        <input type="text" id="tts_audio_dir" name="tts_audio_dir"
+                               value="{{ config.tts.audio_dir }}">
+                        <span class="help-text">Carpeta donde guardar audios generados</span>
+                    </div>
+                </div>
+
+                <!-- Gemini TTS Settings -->
+                <div id="gemini_settings" class="provider-settings">
+                    <h3 style="color: #667eea; margin-top: 20px; margin-bottom: 15px;">⚙️ Configuración de Google Gemini TTS</h3>
+
+                    <div class="form-group">
+                        <label for="gemini_api_key">API Key de Google Gemini (opcional)</label>
+                        <input type="password" id="gemini_api_key" name="gemini_api_key"
+                               value="{{ config.tts.gemini.api_key }}"
+                               placeholder="Usa la API key del LLM si está vacío">
+                        <span class="help-text">Deja vacío para usar la API key del LLM configurada arriba</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="gemini_model">Modelo TTS de Gemini</label>
+                        <select id="gemini_model" name="gemini_model">
+                            <option value="gemini-2.5-flash-preview-tts" {% if config.tts.gemini.model == 'gemini-2.5-flash-preview-tts' %}selected{% endif %}>Gemini 2.5 Flash TTS (Recomendado)</option>
+                            <option value="gemini-2.0-flash-tts" {% if config.tts.gemini.model == 'gemini-2.0-flash-tts' %}selected{% endif %}>Gemini 2.0 Flash TTS</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="gemini_speaker">Voz (Speaker)</label>
+                        <select id="gemini_speaker" name="gemini_speaker">
+                            <option value="Leda" {% if config.tts.gemini.speaker == 'Leda' %}selected{% endif %}>Leda - Juvenil</option>
+                            <option value="Puck" {% if config.tts.gemini.speaker == 'Puck' %}selected{% endif %}>Puck - Optimista</option>
+                            <option value="Charon" {% if config.tts.gemini.speaker == 'Charon' %}selected{% endif %}>Charon - Informativa</option>
+                            <option value="Kore" {% if config.tts.gemini.speaker == 'Kore' %}selected{% endif %}>Kore - Firme</option>
+                            <option value="Fenrir" {% if config.tts.gemini.speaker == 'Fenrir' %}selected{% endif %}>Fenrir - Excitable</option>
+                            <option value="Aoede" {% if config.tts.gemini.speaker == 'Aoede' %}selected{% endif %}>Aoede - Breezy</option>
+                            <option value="Sulafat" {% if config.tts.gemini.speaker == 'Sulafat' %}selected{% endif %}>Sulafat - Expresiva</option>
+                            <option value="Zephyr" {% if config.tts.gemini.speaker == 'Zephyr' %}selected{% endif %}>Zephyr - Brillante</option>
+                            <option value="Orus" {% if config.tts.gemini.speaker == 'Orus' %}selected{% endif %}>Orus - Firme</option>
+                            <option value="Callirrhoe" {% if config.tts.gemini.speaker == 'Callirrhoe' %}selected{% endif %}>Callirrhoe - Tranquila</option>
+                        </select>
+                        <span class="help-text">Selecciona la voz de Gemini (30+ voces disponibles)</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="gemini_preamble">Preámbulo de Gemini</label>
+                        <input type="text" id="gemini_preamble" name="gemini_preamble"
+                               value="{{ config.tts.gemini.preamble }}"
+                               placeholder="Habla de forma natural y expresiva:">
+                        <span class="help-text">Texto guía para el estilo de voz</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="gemini_temperature">Temperatura de Gemini</label>
+                        <input type="number" id="gemini_temperature" name="gemini_temperature"
+                               value="{{ config.tts.gemini.temperature }}"
+                               min="0" max="1" step="0.1" style="width: 150px;">
+                        <span class="help-text">Control de variación de voz (0.0-1.0)</span>
+                    </div>
+                </div>
+
+                <!-- Eleven Labs TTS Settings -->
+                <div id="elevenlabs_settings" class="provider-settings" style="display: none;">
+                    <h3 style="color: #667eea; margin-top: 20px; margin-bottom: 15px;">⚙️ Configuración de Eleven Labs TTS</h3>
+
+                    <div class="form-group">
+                        <label for="elevenlabs_api_key">API Key de Eleven Labs *</label>
+                        <input type="password" id="elevenlabs_api_key" name="elevenlabs_api_key"
+                               value="{{ config.tts.elevenlabs.api_key }}"
+                               placeholder="sk-...">
+                        <span class="help-text">Requerida para usar Eleven Labs. Obtén tu key en: elevenlabs.io/app/settings</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="elevenlabs_voice_id">Voice ID</label>
+                        <input type="text" id="elevenlabs_voice_id" name="elevenlabs_voice_id"
+                               value="{{ config.tts.elevenlabs.voice_id }}"
+                               placeholder="21m00Tcm4TlvDq8ikWAM">
+                        <span class="help-text">ID de la voz (por defecto: Rachel). Explora voces en elevenlabs.io/voice-library</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="elevenlabs_model_id">Modelo de Eleven Labs</label>
+                        <select id="elevenlabs_model_id" name="elevenlabs_model_id">
+                            <option value="eleven_multilingual_v2" {% if config.tts.elevenlabs.model_id == 'eleven_multilingual_v2' %}selected{% endif %}>Eleven Multilingual v2 (Soporta español)</option>
+                            <option value="eleven_monolingual_v1" {% if config.tts.elevenlabs.model_id == 'eleven_monolingual_v1' %}selected{% endif %}>Eleven Monolingual v1 (Solo inglés)</option>
+                            <option value="eleven_turbo_v2" {% if config.tts.elevenlabs.model_id == 'eleven_turbo_v2' %}selected{% endif %}>Eleven Turbo v2 (Rápido)</option>
+                        </select>
+                    </div>
+
+                    <div class="inline-group">
+                        <div class="form-group">
+                            <label for="elevenlabs_stability">Stability</label>
+                            <input type="number" id="elevenlabs_stability" name="elevenlabs_stability"
+                                   value="{{ config.tts.elevenlabs.stability }}"
+                                   min="0" max="1" step="0.05">
+                            <span class="help-text">Consistencia de voz (0.0-1.0)</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="elevenlabs_similarity_boost">Similarity Boost</label>
+                            <input type="number" id="elevenlabs_similarity_boost" name="elevenlabs_similarity_boost"
+                                   value="{{ config.tts.elevenlabs.similarity_boost }}"
+                                   min="0" max="1" step="0.05">
+                            <span class="help-text">Similitud con voz original (0.0-1.0)</span>
+                        </div>
+                    </div>
+
+                    <div class="inline-group">
+                        <div class="form-group">
+                            <label for="elevenlabs_style">Style</label>
+                            <input type="number" id="elevenlabs_style" name="elevenlabs_style"
+                                   value="{{ config.tts.elevenlabs.style }}"
+                                   min="0" max="1" step="0.05">
+                            <span class="help-text">Expresividad (0.0-1.0, solo v2)</span>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="elevenlabs_speaker_boost" name="elevenlabs_speaker_boost"
+                                       {% if config.tts.elevenlabs.use_speaker_boost %}checked{% endif %}>
+                                <label for="elevenlabs_speaker_boost">Speaker Boost</label>
+                            </div>
+                            <span class="help-text">Mejora similitud con el speaker</span>
+                        </div>
                     </div>
                 </div>
 
@@ -501,6 +577,26 @@
     </div>
 
     <script>
+        // Función para mostrar/ocultar configuración según proveedor TTS seleccionado
+        function toggleTTSProvider() {
+            const provider = document.getElementById('tts_provider').value;
+            const geminiSettings = document.getElementById('gemini_settings');
+            const elevenlabsSettings = document.getElementById('elevenlabs_settings');
+
+            if (provider === 'gemini') {
+                geminiSettings.style.display = 'block';
+                elevenlabsSettings.style.display = 'none';
+            } else if (provider === 'elevenlabs') {
+                geminiSettings.style.display = 'none';
+                elevenlabsSettings.style.display = 'block';
+            }
+        }
+
+        // Ejecutar al cargar la página para mostrar la configuración correcta
+        document.addEventListener('DOMContentLoaded', function() {
+            toggleTTSProvider();
+        });
+
         async function reloadConfig() {
             const btn = document.getElementById('reloadBtn');
             btn.disabled = true;

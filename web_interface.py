@@ -410,11 +410,36 @@ def settings():
 
             tts_enabled = request.form.get('tts_enabled') == 'on'
             current_config['tts']['enabled'] = tts_enabled
-            current_config['tts']['model'] = request.form.get('tts_model', 'gemini-2.5-flash-preview-tts').strip()
-            current_config['tts']['speaker'] = request.form.get('tts_speaker', 'Leda').strip()
-            current_config['tts']['preamble'] = request.form.get('tts_preamble', '').strip()
-            current_config['tts']['temperature'] = float(request.form.get('tts_temperature', 0.5))
+
+            # Provider selection
+            tts_provider = request.form.get('tts_provider', 'gemini').strip()
+            current_config['tts']['provider'] = tts_provider
+
+            # Common settings
             current_config['tts']['frequency_percent'] = int(request.form.get('tts_frequency', 30))
+            current_config['tts']['audio_dir'] = request.form.get('tts_audio_dir', './audio_outputs').strip()
+
+            # Gemini TTS settings
+            if 'gemini' not in current_config['tts']:
+                current_config['tts']['gemini'] = {}
+
+            current_config['tts']['gemini']['api_key'] = request.form.get('gemini_api_key', '').strip()
+            current_config['tts']['gemini']['model'] = request.form.get('gemini_model', 'gemini-2.5-flash-preview-tts').strip()
+            current_config['tts']['gemini']['speaker'] = request.form.get('gemini_speaker', 'Leda').strip()
+            current_config['tts']['gemini']['preamble'] = request.form.get('gemini_preamble', '').strip()
+            current_config['tts']['gemini']['temperature'] = float(request.form.get('gemini_temperature', 0.5))
+
+            # Eleven Labs TTS settings
+            if 'elevenlabs' not in current_config['tts']:
+                current_config['tts']['elevenlabs'] = {}
+
+            current_config['tts']['elevenlabs']['api_key'] = request.form.get('elevenlabs_api_key', '').strip()
+            current_config['tts']['elevenlabs']['voice_id'] = request.form.get('elevenlabs_voice_id', '21m00Tcm4TlvDq8ikWAM').strip()
+            current_config['tts']['elevenlabs']['model_id'] = request.form.get('elevenlabs_model_id', 'eleven_multilingual_v2').strip()
+            current_config['tts']['elevenlabs']['stability'] = float(request.form.get('elevenlabs_stability', 0.5))
+            current_config['tts']['elevenlabs']['similarity_boost'] = float(request.form.get('elevenlabs_similarity_boost', 0.75))
+            current_config['tts']['elevenlabs']['style'] = float(request.form.get('elevenlabs_style', 0.0))
+            current_config['tts']['elevenlabs']['use_speaker_boost'] = request.form.get('elevenlabs_speaker_boost') == 'on'
 
             # Admin password
             new_password = request.form.get('admin_password', '').strip()
@@ -449,16 +474,49 @@ def settings():
     # GET - mostrar formulario
     logger.debug(f"Acceso a configuración desde {client_ip}")
 
-    # Asegurar que existe la configuración TTS con valores por defecto
+    # Asegurar que existe la configuración TTS con valores por defecto y estructura correcta
     if 'tts' not in config:
-        config['tts'] = {
-            'enabled': False,
-            'model': 'gemini-2.5-flash-preview-tts',
-            'speaker': 'Leda',
-            'preamble': 'Habla de forma natural y expresiva: ',
-            'temperature': 0.5,
-            'frequency_percent': 30
-        }
+        config['tts'] = {}
+
+    # Asegurar valores por defecto comunes
+    if 'enabled' not in config['tts']:
+        config['tts']['enabled'] = False
+    if 'provider' not in config['tts']:
+        config['tts']['provider'] = 'gemini'
+    if 'frequency_percent' not in config['tts']:
+        config['tts']['frequency_percent'] = 30
+    if 'audio_dir' not in config['tts']:
+        config['tts']['audio_dir'] = './audio_outputs'
+
+    # Asegurar configuración de Gemini
+    if 'gemini' not in config['tts']:
+        config['tts']['gemini'] = {}
+    gemini_defaults = {
+        'api_key': config.get('llm', {}).get('api_key', ''),
+        'model': 'gemini-2.5-flash-preview-tts',
+        'speaker': 'Leda',
+        'preamble': 'Habla de forma natural y expresiva: ',
+        'temperature': 0.5
+    }
+    for key, default_value in gemini_defaults.items():
+        if key not in config['tts']['gemini']:
+            config['tts']['gemini'][key] = default_value
+
+    # Asegurar configuración de Eleven Labs
+    if 'elevenlabs' not in config['tts']:
+        config['tts']['elevenlabs'] = {}
+    elevenlabs_defaults = {
+        'api_key': '',
+        'voice_id': '21m00Tcm4TlvDq8ikWAM',
+        'model_id': 'eleven_multilingual_v2',
+        'stability': 0.5,
+        'similarity_boost': 0.75,
+        'style': 0.0,
+        'use_speaker_boost': True
+    }
+    for key, default_value in elevenlabs_defaults.items():
+        if key not in config['tts']['elevenlabs']:
+            config['tts']['elevenlabs'][key] = default_value
 
     return render_template('settings.html', config=config)
 
