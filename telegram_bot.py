@@ -136,6 +136,9 @@ class CompanionBot:
         # Diccionario para rastrear la última actividad de cada usuario
         self.user_last_activity = {}
 
+        # Diccionario para rastrear temporizadores de agrupación de mensajes
+        self.pending_timers = {}
+
         # Inicializar reloader de configuración
         self.config_reloader = ConfigReloader(config_file)
         logger.info("Sistema de recarga de configuración inicializado")
@@ -278,6 +281,45 @@ class CompanionBot:
         )
         logger.debug(f"Mensaje de usuario guardado en conversación {user.id}")
 
+        # Cancelar temporizador existente si hay uno (el usuario está escribiendo más mensajes)
+        if user.id in self.pending_timers:
+            self.pending_timers[user.id].cancel()
+            logger.debug(f"Temporizador de respuesta cancelado para usuario {user.id} (nuevo mensaje recibido)")
+
+        # Configurar delay de agrupación de mensajes
+        grouping_delay = self.config.get("telegram", {}).get("message_grouping_delay", 5.0)
+        logger.info(f"Esperando {grouping_delay:.1f} segundos para agrupar mensajes de usuario {user.id}")
+
+        # Crear nuevo temporizador para procesar la respuesta después del delay
+        self.pending_timers[user.id] = asyncio.create_task(
+            self._process_response(user, update)
+        )
+
+    async def _process_response(self, user, update: Update):
+        """
+        Procesa y envía la respuesta al usuario después del delay de agrupación.
+
+        Args:
+            user: Objeto de usuario de Telegram
+            update: Update object de Telegram
+        """
+        # Obtener delay de agrupación
+        grouping_delay = self.config.get("telegram", {}).get("message_grouping_delay", 5.0)
+
+        try:
+            # Esperar el delay de agrupación (permite que el usuario envíe más mensajes)
+            await asyncio.sleep(grouping_delay)
+        except asyncio.CancelledError:
+            # El temporizador fue cancelado (usuario envió otro mensaje)
+            logger.debug(f"Procesamiento de respuesta cancelado para usuario {user.id}")
+            return
+
+        # Limpiar temporizador del diccionario
+        if user.id in self.pending_timers:
+            del self.pending_timers[user.id]
+
+        logger.info(f"Procesando respuesta para usuario {user.id} tras {grouping_delay:.1f}s de espera")
+
         # Pausa de "pensamiento" antes de procesar (simula humano pensando qué responder)
         thinking_delay = self._calculate_thinking_delay()
         logger.info(f"Pausa de pensamiento: {thinking_delay:.2f} segundos (sin mostrar 'typing')")
@@ -287,13 +329,20 @@ class CompanionBot:
         context_messages = self.conversation_manager.get_context(user.id)
         logger.debug(f"Contexto obtenido: {len(context_messages)} mensajes")
 
+        # Obtener el último mensaje del usuario para búsqueda de memorias
+        last_user_message = ""
+        for msg in reversed(context_messages):
+            if msg.get("role") == "user":
+                last_user_message = msg.get("content", "")
+                break
+
         # Recuperar memorias relevantes de mem0 si está habilitado
         memories_context = ""
-        if self.memory_manager and self.memory_manager.enabled:
+        if self.memory_manager and self.memory_manager.enabled and last_user_message:
             logger.debug(f"Recuperando memorias relevantes de mem0 para usuario {user.id}")
             memories = self.memory_manager.get_relevant_memories(
                 user_id=user.id,
-                query=user_message,
+                query=last_user_message,
                 limit=5
             )
             if memories:

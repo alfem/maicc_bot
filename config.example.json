@@ -1,7 +1,8 @@
 {
   "telegram": {
     "bot_token": "YOUR_TELEGRAM_BOT_TOKEN_HERE",
-    "allowed_users": []
+    "allowed_users": [],
+    "message_grouping_delay": 5.0
   },
   "llm": {
     "api_url": "",
