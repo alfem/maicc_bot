@@ -14,7 +14,7 @@ from conversation_manager import ConversationManager
 from llm_client import LLMClient
 from news_manager import NewsManager
 from mood_manager import MoodManager
-from tts_client import TTSClient
+from tts_client import create_tts_client
 from memory_manager import MemoryManager
 from logger_config import setup_logging, get_logger
 from config_reloader import ConfigReloader
@@ -109,16 +109,20 @@ class CompanionBot:
         # Inicializar cliente TTS si está habilitado
         tts_config = self.config.get("tts", {})
         if tts_config.get("enabled", False):
-            self.tts_client = TTSClient(
-                api_key=self.config["llm"]["api_key"],
-                model=tts_config.get("model", self.config["llm"]["model"]),
-                speaker=tts_config.get("speaker", "Leda"),
-                preamble=tts_config.get("preamble", ""),
-                temperature=tts_config.get("temperature", 0.5),
-                audio_dir=tts_config.get("audio_dir", "./audio_outputs")
-            )
-            self.tts_frequency = tts_config.get("frequency_percent", 30)
-            logger.info(f"Cliente TTS inicializado (speaker: {tts_config.get('speaker', 'Leda')}, temperature: {tts_config.get('temperature', 0.5)}, frecuencia: {self.tts_frequency}%, audio_dir: {tts_config.get('audio_dir', './audio_outputs')})")
+            provider = tts_config.get("provider", "gemini")
+            provider_config = tts_config.get(provider, {})
+
+            # Añadir audio_dir a la configuración del proveedor
+            provider_config["audio_dir"] = tts_config.get("audio_dir", "./audio_outputs")
+
+            try:
+                self.tts_client = create_tts_client(provider, provider_config)
+                self.tts_frequency = tts_config.get("frequency_percent", 30)
+                logger.info(f"Cliente TTS inicializado (proveedor: {provider}, frecuencia: {self.tts_frequency}%, audio_dir: {provider_config['audio_dir']})")
+            except ValueError as e:
+                logger.error(f"Error al inicializar TTS: {e}")
+                self.tts_client = None
+                self.tts_frequency = 0
         else:
             self.tts_client = None
             self.tts_frequency = 0
@@ -329,15 +333,22 @@ class CompanionBot:
         # Enviar respuesta al usuario (con o sin audio)
         if send_audio:
             logger.info(f"Generando audio de voz para usuario {user.id}")
-            pcm_data = self.tts_client.generate_audio(assistant_response)
+            audio_data = self.tts_client.generate_audio(assistant_response)
 
-            if pcm_data:
-                # Convertir PCM a WAV con headers correctos
-                wav_data = self.tts_client.pcm_to_wav(pcm_data)
+            if audio_data:
+                # Si el cliente es de Google Gemini, convertir PCM a WAV
+                # Si es Eleven Labs, el audio ya viene en formato MP3 listo para usar
+                if hasattr(self.tts_client, 'pcm_to_wav'):
+                    # Es cliente de Gemini, necesita conversión
+                    audio_data = self.tts_client.pcm_to_wav(audio_data)
+                    logger.info(f"Audio convertido a WAV para usuario {user.id} (tamaño: {len(audio_data)} bytes)")
+                else:
+                    # Es cliente de Eleven Labs, audio ya está en formato final
+                    logger.info(f"Audio MP3 listo para usuario {user.id} (tamaño: {len(audio_data)} bytes)")
 
                 # Enviar audio
-                await update.message.reply_voice(voice=wav_data)
-                logger.info(f"Audio WAV enviado a usuario {user.id} (tamaño PCM: {len(pcm_data)} bytes, WAV: {len(wav_data)} bytes)")
+                await update.message.reply_voice(voice=audio_data)
+                logger.info(f"Audio enviado a usuario {user.id}")
             else:
                 # Si falla la generación de audio, enviar texto
                 logger.warning(f"Error al generar audio para usuario {user.id}, enviando texto")
@@ -463,14 +474,21 @@ class CompanionBot:
                     # Enviar mensaje proactivo al usuario (con o sin audio)
                     if send_audio:
                         logger.info(f"Generando audio de voz para mensaje proactivo a usuario {user_id}")
-                        pcm_data = self.tts_client.generate_audio(assistant_response)
+                        audio_data = self.tts_client.generate_audio(assistant_response)
 
-                        if pcm_data:
-                            # Convertir PCM a WAV con headers correctos
-                            wav_data = self.tts_client.pcm_to_wav(pcm_data)
+                        if audio_data:
+                            # Si el cliente es de Google Gemini, convertir PCM a WAV
+                            # Si es Eleven Labs, el audio ya viene en formato MP3 listo para usar
+                            if hasattr(self.tts_client, 'pcm_to_wav'):
+                                # Es cliente de Gemini, necesita conversión
+                                audio_data = self.tts_client.pcm_to_wav(audio_data)
+                                logger.info(f"Audio proactivo convertido a WAV para usuario {user_id} (tamaño: {len(audio_data)} bytes)")
+                            else:
+                                # Es cliente de Eleven Labs, audio ya está en formato final
+                                logger.info(f"Audio proactivo MP3 listo para usuario {user_id} (tamaño: {len(audio_data)} bytes)")
 
-                            await context.bot.send_voice(chat_id=user_id, voice=wav_data)
-                            logger.info(f"Audio WAV proactivo enviado a usuario {user_id} (tamaño PCM: {len(pcm_data)} bytes, WAV: {len(wav_data)} bytes)")
+                            await context.bot.send_voice(chat_id=user_id, voice=audio_data)
+                            logger.info(f"Audio proactivo enviado a usuario {user_id}")
                         else:
                             logger.warning(f"Error al generar audio proactivo para usuario {user_id}, enviando texto")
                             await context.bot.send_message(chat_id=user_id, text=assistant_response)

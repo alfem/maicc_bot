@@ -1,0 +1,112 @@
+{
+  "telegram": {
+    "bot_token": "YOUR_TELEGRAM_BOT_TOKEN_HERE",
+    "allowed_users": []
+  },
+  "llm": {
+    "api_url": "",
+    "api_key": "YOUR_GOOGLE_GEMINI_API_KEY_HERE",
+    "model": "gemini-2.5-flash-lite",
+    "max_tokens": 256,
+    "temperature": 0.5,
+    "system_prompt": "Eres un compañero conversacional amigable y empático..."
+  },
+  "storage": {
+    "conversations_dir": "./conversations",
+    "max_context_messages": 20
+  },
+  "mem0": {
+    "enabled": true,
+    "history_db_path": "/tmp/mem0_history.db",
+    "vector_store": {
+      "provider": "faiss",
+      "config": {
+        "path": "/tmp/faiss_data",
+        "embedding_model_dims": 1536
+      }
+    },
+   "llm": {
+      "provider": "gemini",
+      "config": {
+        "model": "gemini-2.0-flash-001",
+        "temperature": 0.2,
+        "max_tokens": 2000
+      }
+    },
+    "embedder": {
+      "provider": "gemini",
+      "config": {
+        "model": "models/gemini-embedding-exp-03-07",
+        "embedding_dims": 1536
+      }
+    }
+  },
+  "proactive": {
+    "enabled": true,
+    "inactivity_minutes": 60,
+    "check_interval_minutes": 15,
+    "quiet_hours": {
+      "enabled": true,
+      "start": "22:00",
+      "end": "09:00"
+    }
+  },
+  "news": {
+    "rss_feeds": [
+      "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada",
+      "https://www.xataka.com/feedburner.xml"
+    ],
+    "cache_file": "./news_cache.json"
+  },
+  "mood": {
+    "weather_api_key": "YOUR_OPENWEATHERMAP_API_KEY_HERE",
+    "location": "Madrid,ES"
+  },
+  "tts": {
+    "enabled": true,
+    "provider": "gemini",
+    "frequency_percent": 30,
+    "audio_dir": "./audio_outputs",
+    "gemini": {
+      "api_key": "YOUR_GOOGLE_GEMINI_API_KEY_HERE",
+      "model": "gemini-2.5-flash-preview-tts",
+      "speaker": "Puck",
+      "preamble": "Habla de forma natural y expresiva:",
+      "temperature": 0.5
+    },
+    "elevenlabs": {
+      "api_key": "YOUR_ELEVENLABS_API_KEY_HERE",
+      "voice_id": "21m00Tcm4TlvDq8ikWAM",
+      "model_id": "eleven_multilingual_v2",
+      "stability": 0.5,
+      "similarity_boost": 0.75,
+      "style": 0.0,
+      "use_speaker_boost": true
+    }
+  },
+  "web": {
+    "host": "0.0.0.0",
+    "port": 8080,
+    "admin_password": "YOUR_ADMIN_PASSWORD_HERE"
+  },
+  "logging": {
+    "log_dir": "./logs",
+    "level": "INFO",
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    "date_format": "%Y-%m-%d %H:%M:%S",
+    "loggers": {
+      "telegram": {
+        "filename_prefix": "telegram",
+        "level": "INFO"
+      },
+      "llm": {
+        "filename_prefix": "llm",
+        "level": "INFO"
+      },
+      "web": {
+        "filename_prefix": "web",
+        "level": "INFO"
+      }
+    }
+  }
+}

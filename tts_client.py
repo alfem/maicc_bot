@@ -1,5 +1,6 @@
 """
-Cliente para generación de voz usando la API de Google Gemini.
+Cliente para generación de voz usando la API de Google Gemini o Eleven Labs.
+Soporta múltiples proveedores TTS configurables.
 """
 from google import genai
 from google.genai import types
@@ -227,3 +228,44 @@ class TTSClient:
 
         wav_buffer.seek(0)
         return wav_buffer.read()
+
+
+def create_tts_client(provider: str, config: dict):
+    """
+    Factory function para crear el cliente TTS apropiado según el proveedor.
+
+    Args:
+        provider: Nombre del proveedor TTS ("gemini" o "elevenlabs")
+        config: Diccionario con la configuración específica del proveedor
+
+    Returns:
+        Instancia del cliente TTS apropiado
+
+    Raises:
+        ValueError: Si el proveedor no es válido
+    """
+    if provider == "gemini":
+        logger.info("Creando cliente TTS de Google Gemini")
+        return TTSClient(
+            api_key=config.get("api_key"),
+            model=config.get("model", "gemini-2.5-flash-preview-tts"),
+            speaker=config.get("speaker", "Leda"),
+            preamble=config.get("preamble", ""),
+            temperature=config.get("temperature", 0.5),
+            audio_dir=config.get("audio_dir", "./audio_outputs")
+        )
+    elif provider == "elevenlabs":
+        logger.info("Creando cliente TTS de Eleven Labs")
+        from tts_elevenlabs import ElevenLabsTTSClient
+        return ElevenLabsTTSClient(
+            api_key=config.get("api_key"),
+            voice_id=config.get("voice_id", "21m00Tcm4TlvDq8ikWAM"),
+            model_id=config.get("model_id", "eleven_multilingual_v2"),
+            stability=config.get("stability", 0.5),
+            similarity_boost=config.get("similarity_boost", 0.75),
+            style=config.get("style", 0.0),
+            use_speaker_boost=config.get("use_speaker_boost", True),
+            audio_dir=config.get("audio_dir", "./audio_outputs")
+        )
+    else:
+        raise ValueError(f"Proveedor TTS no válido: {provider}. Use 'gemini' o 'elevenlabs'.")
