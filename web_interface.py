@@ -387,6 +387,9 @@ def settings():
             current_config['llm']['temperature'] = float(request.form.get('temperature', 0.7))
             current_config['llm']['max_tokens'] = int(request.form.get('max_tokens', 1024))
 
+            # Telegram settings
+            current_config['telegram']['message_grouping_delay'] = float(request.form.get('message_grouping_delay', 5.0))
+
             # Proactive messaging
             current_config['proactive']['inactivity_minutes'] = int(request.form.get('inactivity_minutes', 60))
 
@@ -474,6 +477,12 @@ def settings():
 
     # GET - mostrar formulario
     logger.debug(f"Acceso a configuración desde {client_ip}")
+
+    # Asegurar que existe la configuración de Telegram con valores por defecto
+    if 'telegram' not in config:
+        config['telegram'] = {}
+    if 'message_grouping_delay' not in config['telegram']:
+        config['telegram']['message_grouping_delay'] = 5.0
 
     # Asegurar que existe la configuración TTS con valores por defecto y estructura correcta
     if 'tts' not in config:
