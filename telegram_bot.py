@@ -143,6 +143,16 @@ class CompanionBot:
         # Registrar manejadores
         self._register_handlers()
 
+    def _calculate_thinking_delay(self) -> float:
+        """
+        Calcula un retraso de "pensamiento" antes de empezar a escribir.
+        Simula el tiempo que una persona tomaría en pensar qué responder.
+
+        Returns:
+            Tiempo de retraso en segundos (entre 2 y 5 segundos)
+        """
+        return random.uniform(2.0, 5.0)
+
     def _calculate_typing_delay(self, text: str) -> float:
         """
         Calcula un retraso aleatorio basado en la longitud del texto.
@@ -268,6 +278,11 @@ class CompanionBot:
         )
         logger.debug(f"Mensaje de usuario guardado en conversación {user.id}")
 
+        # Pausa de "pensamiento" antes de procesar (simula humano pensando qué responder)
+        thinking_delay = self._calculate_thinking_delay()
+        logger.info(f"Pausa de pensamiento: {thinking_delay:.2f} segundos (sin mostrar 'typing')")
+        await asyncio.sleep(thinking_delay)
+
         # Obtener contexto de la conversación
         context_messages = self.conversation_manager.get_context(user.id)
         logger.debug(f"Contexto obtenido: {len(context_messages)} mensajes")
@@ -301,9 +316,9 @@ class CompanionBot:
         logger.debug(f"Solicitando respuesta al LLM para usuario {user.id}")
         assistant_response = self.llm_client.get_response(context_messages, additional_context)
 
-        # Calcular retraso basado en la longitud de la respuesta
+        # Calcular retraso de escritura basado en la longitud de la respuesta
         typing_delay = self._calculate_typing_delay(assistant_response)
-        logger.info(f"Esperando {typing_delay:.2f} segundos antes de responder a {user.id}")
+        logger.info(f"Pausa de escritura: {typing_delay:.2f} segundos (mostrando 'typing...') para {user.id}")
 
         # Mostrar indicador de "escribiendo..." durante el retraso
         # El indicador dura 5 segundos, así que lo renovamos si es necesario
@@ -440,13 +455,18 @@ class CompanionBot:
                     current_mood = self.mood_manager.get_current_mood()
                     mood_prompt = self.mood_manager.get_mood_prompt()
 
+                    # Pausa de "pensamiento" antes de procesar (simula humano pensando qué responder)
+                    thinking_delay = self._calculate_thinking_delay()
+                    logger.info(f"Pausa de pensamiento proactiva: {thinking_delay:.2f} segundos (sin mostrar 'typing')")
+                    await asyncio.sleep(thinking_delay)
+
                     # Generar mensaje proactivo con mood
                     proactive_messages = context_messages + [proactive_prompt]
                     assistant_response = self.llm_client.get_response(proactive_messages, mood_prompt)
 
-                    # Calcular retraso basado en la longitud de la respuesta
+                    # Calcular retraso de escritura basado en la longitud de la respuesta
                     typing_delay = self._calculate_typing_delay(assistant_response)
-                    logger.info(f"Esperando {typing_delay:.2f} segundos antes de enviar mensaje proactivo a {user_id}")
+                    logger.info(f"Pausa de escritura proactiva: {typing_delay:.2f} segundos (mostrando 'typing...') para {user_id}")
 
                     # Mostrar indicador de "escribiendo..." durante el retraso
                     start_time = asyncio.get_event_loop().time()
