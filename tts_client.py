@@ -265,6 +265,7 @@ def create_tts_client(provider: str, config: dict):
             similarity_boost=config.get("similarity_boost", 0.75),
             style=config.get("style", 0.0),
             use_speaker_boost=config.get("use_speaker_boost", True),
+            preamble=config.get("preamble", ""),
             audio_dir=config.get("audio_dir", "./audio_outputs")
         )
     else:

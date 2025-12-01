@@ -499,6 +499,14 @@
                         </select>
                     </div>
 
+                    <div class="form-group">
+                        <label for="elevenlabs_preamble">Preámbulo de Eleven Labs</label>
+                        <input type="text" id="elevenlabs_preamble" name="elevenlabs_preamble"
+                               value="{{ config.tts.elevenlabs.preamble }}"
+                               placeholder="Texto o etiquetas a anteponer...">
+                        <span class="help-text">Texto/etiquetas que se añadirán antes del contenido (ej: etiquetas SSML, instrucciones)</span>
+                    </div>
+
                     <div class="inline-group">
                         <div class="form-group">
                             <label for="elevenlabs_stability">Stability</label>

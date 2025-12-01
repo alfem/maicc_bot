@@ -18,6 +18,7 @@ class ElevenLabsTTSClient:
                  model_id: str = "eleven_multilingual_v2",
                  stability: float = 0.5, similarity_boost: float = 0.75,
                  style: float = 0.0, use_speaker_boost: bool = True,
+                 preamble: str = "",
                  audio_dir: str = "./audio_outputs"):
         """
         Inicializa el cliente de Text-to-Speech de Eleven Labs.
@@ -30,6 +31,7 @@ class ElevenLabsTTSClient:
             similarity_boost: Boost de similitud (0.0-1.0)
             style: Estilo/expresividad (0.0-1.0, solo para v2 models)
             use_speaker_boost: Activar speaker boost para mejorar la similitud
+            preamble: Texto/etiquetas para añadir antes del contenido
             audio_dir: Directorio donde guardar los audios generados
         """
         logger.info(f"Inicializando ElevenLabsTTSClient con voice_id: {voice_id}, model: {model_id}")
@@ -41,6 +43,7 @@ class ElevenLabsTTSClient:
         self.similarity_boost = similarity_boost
         self.style = style
         self.use_speaker_boost = use_speaker_boost
+        self.preamble = preamble
         self.audio_dir = audio_dir
 
         # URL base de la API
@@ -77,8 +80,15 @@ class ElevenLabsTTSClient:
             logger.info(f"  - Similarity Boost: {self.similarity_boost}")
             logger.info(f"  - Style: {self.style}")
             logger.info(f"  - Speaker Boost: {self.use_speaker_boost}")
-            logger.info(f"  - Longitud del texto: {len(text)} caracteres")
-            logger.info(f"Texto: '{text[:200]}{'...' if len(text) > 200 else ''}'")
+            logger.info(f"  - Preámbulo: '{self.preamble}'")
+            logger.info(f"  - Longitud del texto original: {len(text)} caracteres")
+
+            # Preparar el texto con el preámbulo
+            full_text = self.preamble + text if self.preamble else text
+            logger.info(f"  - Longitud del texto completo (con preámbulo): {len(full_text)} caracteres")
+            logger.info(f"Texto original: '{text[:200]}{'...' if len(text) > 200 else ''}'")
+            if self.preamble:
+                logger.info(f"Texto completo (con preámbulo): '{full_text[:200]}{'...' if len(full_text) > 200 else ''}'")
 
             # Preparar la URL del endpoint
             url = f"{self.base_url}/text-to-speech/{self.voice_id}"
@@ -92,7 +102,7 @@ class ElevenLabsTTSClient:
 
             # Preparar el payload
             payload = {
-                "text": text,
+                "text": full_text,
                 "model_id": self.model_id,
                 "voice_settings": {
                     "stability": self.stability,
@@ -168,6 +178,16 @@ class ElevenLabsTTSClient:
         """
         logger.info(f"🔄 Actualizando model_id de '{self.model_id}' a '{model_id}'")
         self.model_id = model_id
+
+    def update_preamble(self, preamble: str):
+        """
+        Actualiza el preámbulo a utilizar.
+
+        Args:
+            preamble: Nuevo texto de preámbulo
+        """
+        logger.info(f"🔄 Actualizando preámbulo de '{self.preamble}' a '{preamble}'")
+        self.preamble = preamble
 
     def update_voice_settings(self, stability: Optional[float] = None,
                              similarity_boost: Optional[float] = None,

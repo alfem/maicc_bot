@@ -440,6 +440,7 @@ def settings():
             current_config['tts']['elevenlabs']['similarity_boost'] = float(request.form.get('elevenlabs_similarity_boost', 0.75))
             current_config['tts']['elevenlabs']['style'] = float(request.form.get('elevenlabs_style', 0.0))
             current_config['tts']['elevenlabs']['use_speaker_boost'] = request.form.get('elevenlabs_speaker_boost') == 'on'
+            current_config['tts']['elevenlabs']['preamble'] = request.form.get('elevenlabs_preamble', '').strip()
 
             # Admin password
             new_password = request.form.get('admin_password', '').strip()
@@ -512,7 +513,8 @@ def settings():
         'stability': 0.5,
         'similarity_boost': 0.75,
         'style': 0.0,
-        'use_speaker_boost': True
+        'use_speaker_boost': True,
+        'preamble': ''
     }
     for key, default_value in elevenlabs_defaults.items():
         if key not in config['tts']['elevenlabs']:
