@@ -302,7 +302,7 @@
                     <div class="form-group">
                         <label for="gemini_api_key">API Key de Google Gemini</label>
                         <input type="password" id="gemini_api_key" name="gemini_api_key"
-                               value="{{ config.llm.api_key }}"
+                               value="{{ config.llm.gemini.api_key if config.llm.gemini else '' }}"
                                placeholder="AIza...">
                         <span class="help-text">Clave de API de Google AI Studio</span>
                     </div>
@@ -311,16 +311,16 @@
                         <label for="gemini_model">Modelo Gemini</label>
                         <select id="gemini_model" name="gemini_model">
                             <optgroup label="Gemini 2.5 (Recomendado)">
-                                <option value="gemini-2.5-pro" {% if config.llm.model == 'gemini-2.5-pro' %}selected{% endif %}>Gemini 2.5 Pro (Más potente)</option>
-                                <option value="gemini-2.5-flash" {% if config.llm.model == 'gemini-2.5-flash' %}selected{% endif %}>Gemini 2.5 Flash (Equilibrado)</option>
-                                <option value="gemini-2.5-flash-lite" {% if config.llm.model == 'gemini-2.5-flash-lite' %}selected{% endif %}>Gemini 2.5 Flash-Lite (Rápido y económico)</option>
+                                <option value="gemini-2.5-pro" {% if config.llm.gemini and config.llm.gemini.model == 'gemini-2.5-pro' %}selected{% endif %}>Gemini 2.5 Pro (Más potente)</option>
+                                <option value="gemini-2.5-flash" {% if config.llm.gemini and config.llm.gemini.model == 'gemini-2.5-flash' %}selected{% endif %}>Gemini 2.5 Flash (Equilibrado)</option>
+                                <option value="gemini-2.5-flash-lite" {% if config.llm.gemini and config.llm.gemini.model == 'gemini-2.5-flash-lite' %}selected{% endif %}>Gemini 2.5 Flash-Lite (Rápido y económico)</option>
                             </optgroup>
                             <optgroup label="Gemini 2.0">
-                                <option value="gemini-2.0-flash" {% if config.llm.model == 'gemini-2.0-flash' %}selected{% endif %}>Gemini 2.0 Flash</option>
-                                <option value="gemini-2.0-flash-lite" {% if config.llm.model == 'gemini-2.0-flash-lite' %}selected{% endif %}>Gemini 2.0 Flash-Lite</option>
+                                <option value="gemini-2.0-flash" {% if config.llm.gemini and config.llm.gemini.model == 'gemini-2.0-flash' %}selected{% endif %}>Gemini 2.0 Flash</option>
+                                <option value="gemini-2.0-flash-lite" {% if config.llm.gemini and config.llm.gemini.model == 'gemini-2.0-flash-lite' %}selected{% endif %}>Gemini 2.0 Flash-Lite</option>
                             </optgroup>
                             <optgroup label="Experimentales">
-                                <option value="gemini-2.0-flash-exp" {% if config.llm.model == 'gemini-2.0-flash-exp' %}selected{% endif %}>Gemini 2.0 Flash Experimental</option>
+                                <option value="gemini-2.0-flash-exp" {% if config.llm.gemini and config.llm.gemini.model == 'gemini-2.0-flash-exp' %}selected{% endif %}>Gemini 2.0 Flash Experimental</option>
                             </optgroup>
                         </select>
                         <span class="help-text">Los modelos 2.5 son más recientes y potentes</span>

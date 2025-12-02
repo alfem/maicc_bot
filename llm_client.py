@@ -283,23 +283,29 @@ def create_llm_client(provider: str, config: Dict) -> BaseLLMClient:
     """
     provider = provider.lower()
 
+    # Parámetros comunes
+    max_tokens = config.get("max_tokens", 1024)
+    temperature = config.get("temperature", 0.7)
+    system_prompt = config.get("system_prompt", "")
+
     if provider == "gemini":
+        gemini_config = config.get("gemini", {})
         return GeminiLLMClient(
-            api_key=config.get("api_key", ""),
-            model=config.get("model", "gemini-2.0-flash-exp"),
-            max_tokens=config.get("max_tokens", 1024),
-            temperature=config.get("temperature", 0.7),
-            system_prompt=config.get("system_prompt", ""),
-            api_url=config.get("api_url", "")
+            api_key=gemini_config.get("api_key", ""),
+            model=gemini_config.get("model", "gemini-2.0-flash-exp"),
+            max_tokens=max_tokens,
+            temperature=temperature,
+            system_prompt=system_prompt,
+            api_url=""
         )
     elif provider == "openai":
         openai_config = config.get("openai", {})
         return OpenAILLMClient(
             api_key=openai_config.get("api_key", ""),
             model=openai_config.get("model", "gpt-4o-mini"),
-            max_tokens=config.get("max_tokens", 1024),
-            temperature=config.get("temperature", 0.7),
-            system_prompt=config.get("system_prompt", ""),
+            max_tokens=max_tokens,
+            temperature=temperature,
+            system_prompt=system_prompt,
             base_url=openai_config.get("base_url", "")
         )
     else:

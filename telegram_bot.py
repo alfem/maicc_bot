@@ -52,8 +52,18 @@ class CompanionBot:
         # Configurar variables de entorno para mem0
         # mem0 necesita estas variables según el proveedor usado
         if 'GOOGLE_API_KEY' not in os.environ:
-            os.environ['GOOGLE_API_KEY'] = self.config["llm"]["api_key"]
-            logger.info("GOOGLE_API_KEY configurada desde config.json")
+            gemini_api_key = self.config["llm"].get("gemini", {}).get("api_key", "")
+            if gemini_api_key:
+                os.environ['GOOGLE_API_KEY'] = gemini_api_key
+                logger.info("GOOGLE_API_KEY configurada desde config.json")
+
+        # Configurar API key de OpenAI para LLM principal si se usa
+        llm_provider = self.config["llm"].get("provider", "gemini")
+        if llm_provider == "openai":
+            openai_api_key = self.config["llm"].get("openai", {}).get("api_key", "")
+            if openai_api_key and 'OPENAI_API_KEY' not in os.environ:
+                os.environ['OPENAI_API_KEY'] = openai_api_key
+                logger.info("OPENAI_API_KEY configurada desde config.json")
 
         # Inicializar gestor de memorias mem0 si está habilitado
         mem0_config = self.config.get("mem0", {})
