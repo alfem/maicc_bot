@@ -287,45 +287,106 @@
                 <h2>🤖 Configuración del LLM</h2>
 
                 <div class="form-group">
-                    <label for="model">Modelo</label>
-                    <select id="model" name="model" required>
-                        <optgroup label="Gemini 2.5 (Recomendado)">
-                            <option value="gemini-2.5-pro" {% if config.llm.model == 'gemini-2.5-pro' %}selected{% endif %}>Gemini 2.5 Pro (Más potente)</option>
-                            <option value="gemini-2.5-flash" {% if config.llm.model == 'gemini-2.5-flash' %}selected{% endif %}>Gemini 2.5 Flash (Equilibrado)</option>
-                            <option value="gemini-2.5-flash-lite" {% if config.llm.model == 'gemini-2.5-flash-lite' %}selected{% endif %}>Gemini 2.5 Flash-Lite (Rápido y económico)</option>
-                        </optgroup>
-                        <optgroup label="Gemini 2.0">
-                            <option value="gemini-2.0-flash" {% if config.llm.model == 'gemini-2.0-flash' %}selected{% endif %}>Gemini 2.0 Flash</option>
-                            <option value="gemini-2.0-flash-lite" {% if config.llm.model == 'gemini-2.0-flash-lite' %}selected{% endif %}>Gemini 2.0 Flash-Lite</option>
-                        </optgroup>
-                        <optgroup label="Experimentales">
-                            <option value="gemini-2.0-flash-exp" {% if config.llm.model == 'gemini-2.0-flash-exp' %}selected{% endif %}>Gemini 2.0 Flash Experimental</option>
-                        </optgroup>
+                    <label for="llm_provider">Proveedor LLM</label>
+                    <select id="llm_provider" name="llm_provider" onchange="toggleLLMProvider()" required>
+                        <option value="gemini" {% if config.llm.provider == 'gemini' %}selected{% endif %}>Google Gemini</option>
+                        <option value="openai" {% if config.llm.provider == 'openai' %}selected{% endif %}>OpenAI</option>
                     </select>
-                    <span class="help-text">Selecciona el modelo de IA que usará el bot. Los modelos 2.5 son más recientes y potentes.</span>
+                    <span class="help-text">Selecciona el proveedor de IA que usará el bot</span>
                 </div>
 
-                <div class="form-group">
-                    <label for="system_prompt">System Prompt</label>
-                    <textarea id="system_prompt" name="system_prompt" class="textarea-large" required>{{ config.llm.system_prompt }}</textarea>
-                    <span class="help-text">Define la personalidad y comportamiento del asistente</span>
-                </div>
+                <!-- Gemini Settings -->
+                <div id="gemini_llm_settings" class="provider-settings">
+                    <h3 style="color: #667eea; margin-top: 20px; margin-bottom: 15px;">⚙️ Configuración de Google Gemini</h3>
 
-                <div class="inline-group">
                     <div class="form-group">
-                        <label for="temperature">Temperatura</label>
-                        <input type="number" id="temperature" name="temperature"
-                               value="{{ config.llm.temperature }}"
-                               min="0" max="2" step="0.1" required>
-                        <span class="help-text">Creatividad (0.0 - 2.0)</span>
+                        <label for="gemini_api_key">API Key de Google Gemini</label>
+                        <input type="password" id="gemini_api_key" name="gemini_api_key"
+                               value="{{ config.llm.api_key }}"
+                               placeholder="AIza...">
+                        <span class="help-text">Clave de API de Google AI Studio</span>
                     </div>
 
                     <div class="form-group">
-                        <label for="max_tokens">Max Tokens</label>
-                        <input type="number" id="max_tokens" name="max_tokens"
-                               value="{{ config.llm.max_tokens }}"
-                               min="256" max="32768" step="256" required>
-                        <span class="help-text">Longitud máxima de respuesta</span>
+                        <label for="gemini_model">Modelo Gemini</label>
+                        <select id="gemini_model" name="gemini_model">
+                            <optgroup label="Gemini 2.5 (Recomendado)">
+                                <option value="gemini-2.5-pro" {% if config.llm.model == 'gemini-2.5-pro' %}selected{% endif %}>Gemini 2.5 Pro (Más potente)</option>
+                                <option value="gemini-2.5-flash" {% if config.llm.model == 'gemini-2.5-flash' %}selected{% endif %}>Gemini 2.5 Flash (Equilibrado)</option>
+                                <option value="gemini-2.5-flash-lite" {% if config.llm.model == 'gemini-2.5-flash-lite' %}selected{% endif %}>Gemini 2.5 Flash-Lite (Rápido y económico)</option>
+                            </optgroup>
+                            <optgroup label="Gemini 2.0">
+                                <option value="gemini-2.0-flash" {% if config.llm.model == 'gemini-2.0-flash' %}selected{% endif %}>Gemini 2.0 Flash</option>
+                                <option value="gemini-2.0-flash-lite" {% if config.llm.model == 'gemini-2.0-flash-lite' %}selected{% endif %}>Gemini 2.0 Flash-Lite</option>
+                            </optgroup>
+                            <optgroup label="Experimentales">
+                                <option value="gemini-2.0-flash-exp" {% if config.llm.model == 'gemini-2.0-flash-exp' %}selected{% endif %}>Gemini 2.0 Flash Experimental</option>
+                            </optgroup>
+                        </select>
+                        <span class="help-text">Los modelos 2.5 son más recientes y potentes</span>
+                    </div>
+                </div>
+
+                <!-- OpenAI Settings -->
+                <div id="openai_llm_settings" class="provider-settings" style="display: none;">
+                    <h3 style="color: #10a37f; margin-top: 20px; margin-bottom: 15px;">⚙️ Configuración de OpenAI</h3>
+
+                    <div class="form-group">
+                        <label for="openai_api_key">API Key de OpenAI</label>
+                        <input type="password" id="openai_api_key" name="openai_api_key"
+                               value="{{ config.llm.openai.api_key if config.llm.openai else '' }}"
+                               placeholder="sk-...">
+                        <span class="help-text">Clave de API de OpenAI (https://platform.openai.com/api-keys)</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="openai_model">Modelo OpenAI</label>
+                        <select id="openai_model" name="openai_model">
+                            <optgroup label="GPT-4 (Recomendado)">
+                                <option value="gpt-4o" {% if config.llm.openai and config.llm.openai.model == 'gpt-4o' %}selected{% endif %}>GPT-4o (Más potente y rápido)</option>
+                                <option value="gpt-4o-mini" {% if config.llm.openai and config.llm.openai.model == 'gpt-4o-mini' %}selected{% endif %}>GPT-4o-mini (Equilibrado y económico)</option>
+                                <option value="gpt-4-turbo" {% if config.llm.openai and config.llm.openai.model == 'gpt-4-turbo' %}selected{% endif %}>GPT-4 Turbo</option>
+                            </optgroup>
+                            <optgroup label="GPT-3.5">
+                                <option value="gpt-3.5-turbo" {% if config.llm.openai and config.llm.openai.model == 'gpt-3.5-turbo' %}selected{% endif %}>GPT-3.5 Turbo (Económico)</option>
+                            </optgroup>
+                        </select>
+                        <span class="help-text">GPT-4o ofrece el mejor rendimiento</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="openai_base_url">Base URL (opcional)</label>
+                        <input type="text" id="openai_base_url" name="openai_base_url"
+                               value="{{ config.llm.openai.base_url if config.llm.openai else '' }}"
+                               placeholder="https://api.openai.com/v1">
+                        <span class="help-text">Dejar vacío para usar el endpoint oficial. Útil para proxies o endpoints compatibles</span>
+                    </div>
+                </div>
+
+                <!-- Common Settings -->
+                <div style="margin-top: 20px;">
+                    <div class="form-group">
+                        <label for="system_prompt">System Prompt</label>
+                        <textarea id="system_prompt" name="system_prompt" class="textarea-large" required>{{ config.llm.system_prompt }}</textarea>
+                        <span class="help-text">Define la personalidad y comportamiento del asistente</span>
+                    </div>
+
+                    <div class="inline-group">
+                        <div class="form-group">
+                            <label for="temperature">Temperatura</label>
+                            <input type="number" id="temperature" name="temperature"
+                                   value="{{ config.llm.temperature }}"
+                                   min="0" max="2" step="0.1" required>
+                            <span class="help-text">Creatividad (0.0 - 2.0)</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="max_tokens">Max Tokens</label>
+                            <input type="number" id="max_tokens" name="max_tokens"
+                                   value="{{ config.llm.max_tokens }}"
+                                   min="256" max="32768" step="256" required>
+                            <span class="help-text">Longitud máxima de respuesta</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -598,6 +659,21 @@
     </div>
 
     <script>
+        // Función para mostrar/ocultar configuración según proveedor LLM seleccionado
+        function toggleLLMProvider() {
+            const provider = document.getElementById('llm_provider').value;
+            const geminiSettings = document.getElementById('gemini_llm_settings');
+            const openaiSettings = document.getElementById('openai_llm_settings');
+
+            if (provider === 'gemini') {
+                geminiSettings.style.display = 'block';
+                openaiSettings.style.display = 'none';
+            } else if (provider === 'openai') {
+                geminiSettings.style.display = 'none';
+                openaiSettings.style.display = 'block';
+            }
+        }
+
         // Función para mostrar/ocultar configuración según proveedor TTS seleccionado
         function toggleTTSProvider() {
             const provider = document.getElementById('tts_provider').value;
@@ -615,6 +691,7 @@
 
         // Ejecutar al cargar la página para mostrar la configuración correcta
         document.addEventListener('DOMContentLoaded', function() {
+            toggleLLMProvider();
             toggleTTSProvider();
         });
 

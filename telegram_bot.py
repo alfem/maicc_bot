@@ -11,7 +11,7 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 from conversation_manager import ConversationManager
-from llm_client import LLMClient
+from llm_client import create_llm_client
 from news_manager import NewsManager
 from mood_manager import MoodManager
 from tts_client import create_tts_client
@@ -49,8 +49,8 @@ class CompanionBot:
         logger.info("Inicializando CompanionBot")
         logger.info("="*60)
 
-        # Configurar GOOGLE_API_KEY como variable de entorno para mem0
-        # mem0 necesita esta variable de entorno para Gemini (LLM y embeddings)
+        # Configurar variables de entorno para mem0
+        # mem0 necesita estas variables según el proveedor usado
         if 'GOOGLE_API_KEY' not in os.environ:
             os.environ['GOOGLE_API_KEY'] = self.config["llm"]["api_key"]
             logger.info("GOOGLE_API_KEY configurada desde config.json")
@@ -58,6 +58,16 @@ class CompanionBot:
         # Inicializar gestor de memorias mem0 si está habilitado
         mem0_config = self.config.get("mem0", {})
         mem0_enabled = mem0_config.get("enabled", False)
+
+        # Configurar API key de OpenAI si mem0 usa OpenAI como proveedor LLM
+        if mem0_enabled:
+            mem0_llm_provider = mem0_config.get("llm", {}).get("provider", "gemini")
+            if mem0_llm_provider == "openai":
+                openai_api_key = mem0_config.get("llm", {}).get("openai", {}).get("api_key", "")
+                if openai_api_key and 'OPENAI_API_KEY' not in os.environ:
+                    os.environ['OPENAI_API_KEY'] = openai_api_key
+                    logger.info("OPENAI_API_KEY configurada para mem0 desde config.json")
+
         if mem0_enabled:
             self.memory_manager = MemoryManager(
                 config={
@@ -80,14 +90,10 @@ class CompanionBot:
             memory_manager=self.memory_manager
         )
 
-        self.llm_client = LLMClient(
-            api_key=self.config["llm"]["api_key"],
-            model=self.config["llm"]["model"],
-            max_tokens=self.config["llm"]["max_tokens"],
-            temperature=self.config["llm"]["temperature"],
-            system_prompt=self.config["llm"]["system_prompt"],
-            api_url=self.config["llm"]["api_url"]
-        )
+        # Inicializar cliente LLM según el proveedor configurado
+        llm_provider = self.config["llm"].get("provider", "gemini")
+        logger.info(f"Inicializando LLM con proveedor: {llm_provider}")
+        self.llm_client = create_llm_client(llm_provider, self.config["llm"])
 
         # Inicializar gestor de noticias si está configurado
         rss_feeds = self.config.get("news", {}).get("rss_feeds", [])

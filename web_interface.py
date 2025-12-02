@@ -42,8 +42,8 @@ conversation_manager = ConversationManager(
 
 logger.info(f"Directorio de conversaciones: {config['storage']['conversations_dir']}")
 
-# Configurar GOOGLE_API_KEY como variable de entorno para mem0
-# mem0 necesita esta variable de entorno para Gemini
+# Configurar variables de entorno para mem0
+# mem0 necesita estas variables según el proveedor usado
 if 'GOOGLE_API_KEY' not in os.environ:
     os.environ['GOOGLE_API_KEY'] = config["llm"]["api_key"]
     logger.info("GOOGLE_API_KEY configurada desde config.json")
@@ -52,6 +52,15 @@ if 'GOOGLE_API_KEY' not in os.environ:
 mem0_config = config.get("mem0", {})
 mem0_enabled = mem0_config.get("enabled", False)
 memory_manager = None
+
+# Configurar API key de OpenAI si mem0 usa OpenAI como proveedor LLM
+if mem0_enabled:
+    mem0_llm_provider = mem0_config.get("llm", {}).get("provider", "gemini")
+    if mem0_llm_provider == "openai":
+        openai_api_key = mem0_config.get("llm", {}).get("openai", {}).get("api_key", "")
+        if openai_api_key and 'OPENAI_API_KEY' not in os.environ:
+            os.environ['OPENAI_API_KEY'] = openai_api_key
+            logger.info("OPENAI_API_KEY configurada para mem0 desde config.json")
 
 if mem0_enabled:
     try:
@@ -382,10 +391,30 @@ def settings():
 
             # Actualizar valores desde el formulario
             # LLM
-            current_config['llm']['model'] = request.form.get('model', 'gemini-2.5-flash').strip()
+            llm_provider = request.form.get('llm_provider', 'gemini').strip()
+            current_config['llm']['provider'] = llm_provider
+
+            # Configuración común
             current_config['llm']['system_prompt'] = request.form.get('system_prompt', '').strip()
             current_config['llm']['temperature'] = float(request.form.get('temperature', 0.7))
             current_config['llm']['max_tokens'] = int(request.form.get('max_tokens', 1024))
+
+            # Configuración específica de Gemini
+            if llm_provider == 'gemini':
+                current_config['llm']['api_key'] = request.form.get('gemini_api_key', '').strip()
+                current_config['llm']['model'] = request.form.get('gemini_model', 'gemini-2.5-flash').strip()
+
+            # Configuración específica de OpenAI
+            if 'openai' not in current_config['llm']:
+                current_config['llm']['openai'] = {}
+
+            current_config['llm']['openai']['api_key'] = request.form.get('openai_api_key', '').strip()
+            current_config['llm']['openai']['model'] = request.form.get('openai_model', 'gpt-4o-mini').strip()
+            current_config['llm']['openai']['base_url'] = request.form.get('openai_base_url', '').strip()
+
+            # Si el proveedor es OpenAI, también actualizar el modelo principal
+            if llm_provider == 'openai':
+                current_config['llm']['model'] = current_config['llm']['openai']['model']
 
             # Telegram settings
             current_config['telegram']['message_grouping_delay'] = float(request.form.get('message_grouping_delay', 5.0))

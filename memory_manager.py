@@ -30,16 +30,21 @@ class MemoryManager:
             # Importar mem0 solo si está habilitado
             from mem0 import Memory
 
-            # Verificar que GOOGLE_API_KEY esté configurada
-            # mem0 la busca automáticamente en las variables de entorno
-            if not os.getenv('GOOGLE_API_KEY'):
-                self.logger.error("GOOGLE_API_KEY no está configurada. mem0 no funcionará correctamente.")
+            # Verificar que las API keys necesarias estén configuradas según el proveedor
+            llm_provider = config.get("llm", {}).get("provider", "gemini")
+
+            if llm_provider == "gemini" and not os.getenv('GOOGLE_API_KEY'):
+                self.logger.error("GOOGLE_API_KEY no está configurada. mem0 con Gemini no funcionará correctamente.")
+                self.enabled = False
+                return
+            elif llm_provider == "openai" and not os.getenv('OPENAI_API_KEY'):
+                self.logger.error("OPENAI_API_KEY no está configurada. mem0 con OpenAI no funcionará correctamente.")
                 self.enabled = False
                 return
 
             # Inicializar mem0 con la configuración
             self.memory = Memory.from_config(config)
-            self.logger.info("MemoryManager inicializado correctamente con mem0")
+            self.logger.info(f"MemoryManager inicializado correctamente con mem0 (proveedor LLM: {llm_provider})")
 
         except ImportError:
             self.logger.error("mem0ai no está instalado. Ejecuta: pip install mem0ai")
