@@ -76,17 +76,19 @@ class ConfigReloader:
             bot_instance.config = new_config
 
             # Reconstruir el cliente LLM con nueva configuración
-            from llm_client import LLMClient
-            bot_instance.llm_client = LLMClient(
-                api_key=new_config["llm"]["api_key"],
-                model=new_config["llm"]["model"],
-                max_tokens=new_config["llm"]["max_tokens"],
-                temperature=new_config["llm"]["temperature"],
-                system_prompt=new_config["llm"]["system_prompt"],
-                api_url=new_config["llm"]["api_url"]
-            )
+            from llm_client import create_llm_client
+            llm_provider = new_config["llm"].get("provider", "gemini")
+            bot_instance.llm_client = create_llm_client(llm_provider, new_config["llm"])
+
+            # Obtener modelo según el proveedor activo
+            if llm_provider == 'gemini':
+                llm_model = new_config['llm'].get('gemini', {}).get('model', 'gemini-2.5-flash')
+            else:
+                llm_model = new_config['llm'].get('openai', {}).get('model', 'gpt-4o-mini')
+
             logger.info("Cliente LLM reconstruido con nueva configuración")
-            logger.info(f"  - Modelo: {new_config['llm']['model']}")
+            logger.info(f"  - Proveedor: {llm_provider}")
+            logger.info(f"  - Modelo: {llm_model}")
             logger.info(f"  - Temperature: {new_config['llm']['temperature']}")
             logger.info(f"  - Max tokens: {new_config['llm']['max_tokens']}")
             logger.info(f"  - System prompt (longitud): {len(new_config['llm']['system_prompt'])} caracteres")
@@ -132,17 +134,25 @@ class ConfigReloader:
             if tts_changed:
                 logger.info("Detectados cambios en configuración de TTS")
                 if tts_config.get("enabled", False):
-                    from tts_client import TTSClient
-                    bot_instance.tts_client = TTSClient(
-                        api_key=new_config["llm"]["api_key"],
-                        model=tts_config.get("model", new_config["llm"]["model"]),
-                        speaker=tts_config.get("speaker", "Leda"),
-                        preamble=tts_config.get("preamble", ""),
-                        temperature=tts_config.get("temperature", 0.5),
-                        audio_dir=tts_config.get("audio_dir", "./audio_outputs")
-                    )
-                    bot_instance.tts_frequency = tts_config.get("frequency_percent", 30)
-                    logger.info(f"Cliente TTS reconstruido (speaker: {tts_config.get('speaker', 'Leda')}, temperature: {tts_config.get('temperature', 0.5)}, frecuencia: {bot_instance.tts_frequency}%)")
+                    from tts_client import create_tts_client
+
+                    # Obtener proveedor TTS
+                    tts_provider = tts_config.get("provider", "gemini")
+
+                    # Obtener configuración del proveedor TTS
+                    provider_config = tts_config.get(tts_provider, {}).copy()
+
+                    # Añadir audio_dir a la configuración del proveedor
+                    provider_config["audio_dir"] = tts_config.get("audio_dir", "./audio_outputs")
+
+                    try:
+                        bot_instance.tts_client = create_tts_client(tts_provider, provider_config)
+                        bot_instance.tts_frequency = tts_config.get("frequency_percent", 30)
+                        logger.info(f"Cliente TTS reconstruido (proveedor: {tts_provider}, frecuencia: {bot_instance.tts_frequency}%)")
+                    except ValueError as e:
+                        logger.error(f"Error al reconstruir TTS: {e}")
+                        bot_instance.tts_client = None
+                        bot_instance.tts_frequency = 0
                 else:
                     bot_instance.tts_client = None
                     bot_instance.tts_frequency = 0

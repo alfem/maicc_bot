@@ -616,7 +616,16 @@ class CompanionBot:
         logger.info("="*60)
         logger.info("Iniciando bot de Telegram...")
         logger.info("="*60)
-        logger.info(f"Modelo LLM: {self.config['llm']['model']}")
+
+        # Obtener modelo según el proveedor activo
+        llm_provider = self.config['llm'].get('provider', 'gemini')
+        if llm_provider == 'gemini':
+            llm_model = self.config['llm'].get('gemini', {}).get('model', 'gemini-2.5-flash')
+        else:
+            llm_model = self.config['llm'].get('openai', {}).get('model', 'gpt-4o-mini')
+
+        logger.info(f"Proveedor LLM: {llm_provider}")
+        logger.info(f"Modelo LLM: {llm_model}")
         logger.info(f"Directorio de conversaciones: {self.config['storage']['conversations_dir']}")
 
         job_queue = self.app.job_queue
