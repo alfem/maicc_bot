@@ -568,9 +568,14 @@
                         <label for="elevenlabs_model_id">Modelo de Eleven Labs</label>
                         <select id="elevenlabs_model_id" name="elevenlabs_model_id">
                             <option value="eleven_multilingual_v2" {% if config.tts.elevenlabs.model_id == 'eleven_multilingual_v2' %}selected{% endif %}>Eleven Multilingual v2 (Soporta español)</option>
-                            <option value="eleven_monolingual_v1" {% if config.tts.elevenlabs.model_id == 'eleven_monolingual_v1' %}selected{% endif %}>Eleven Monolingual v1 (Solo inglés)</option>
                             <option value="eleven_turbo_v2" {% if config.tts.elevenlabs.model_id == 'eleven_turbo_v2' %}selected{% endif %}>Eleven Turbo v2 (Rápido)</option>
+                            <option value="eleven_turbo_v2_5" {% if config.tts.elevenlabs.model_id == 'eleven_turbo_v2_5' %}selected{% endif %}>Eleven Turbo v2.5 (Más rápido y preciso)</option>
+                            <option value="eleven_flash_v2" {% if config.tts.elevenlabs.model_id == 'eleven_flash_v2' %}selected{% endif %}>Eleven Flash v2 (Ultra rápido)</option>
+                            <option value="eleven_flash_v2_5" {% if config.tts.elevenlabs.model_id == 'eleven_flash_v2_5' %}selected{% endif %}>Eleven Flash v2.5 (Más preciso)</option>
+                            <option value="eleven_v3" {% if config.tts.elevenlabs.model_id == 'eleven_v3' %}selected{% endif %}>Eleven v3 (Nueva generación)</option>
+                            <option value="eleven_monolingual_v1" {% if config.tts.elevenlabs.model_id == 'eleven_monolingual_v1' %}selected{% endif %}>Eleven Monolingual v1 (Solo inglés)</option>
                         </select>
+                        <span class="help-text">Los modelos Turbo y Flash son más rápidos. Multilingual v2 tiene mejor calidad.</span>
                     </div>
 
                     <div class="form-group">
